@@ -9,24 +9,26 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-import os
 from pathlib import Path
-from dotenv import load_dotenv
-
+import environ
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+env = environ.Env(
+    DJANGO_DEBUG=(bool, False),
+)
+
+environ.Env.read_env(BASE_DIR / ".env")
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+SECRET_KEY = env("DJANGO_SECRET_KEY")
 
-DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
+DEBUG = env("DJANGO_DEBUG")
 
 ALLOWED_HOSTS = [
     "127.0.0.1",
@@ -88,11 +90,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.environ["POSTGRES_DB"],
-        "USER": os.environ["POSTGRES_USER"],
-        "PASSWORD": os.environ["POSTGRES_PASSWORD"],
-        "HOST": os.getenv("POSTGRES_HOST", "127.0.0.1"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+        "NAME": env("POSTGRES_DB"),
+        "USER": env("POSTGRES_USER"),
+        "PASSWORD": env("POSTGRES_PASSWORD"),
+        "HOST": env("POSTGRES_HOST", default="127.0.0.1"),
+        "PORT": env("POSTGRES_PORT", default="5432"),
     }
 }
 
@@ -142,4 +144,3 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
-
