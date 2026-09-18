@@ -153,7 +153,6 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-<<<<<<< HEAD
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
@@ -162,6 +161,3 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "API for vendor and employee authentication, product catalogue, and ordering",
     "VERSION": "1.0.0",
 }
-=======
-}
->>>>>>> 08ef1b97dd8b374f56252b2bc4f6d95315ac5d9f
