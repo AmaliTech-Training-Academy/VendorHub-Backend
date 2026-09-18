@@ -1,9 +1,11 @@
 from django.test import TestCase
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase
+
 from accounts.models import AppUser, VendorProfile, EmployeeProfile
 from accounts.services import vendor_register, employee_register, user_login
 from django.core.exceptions import ValidationError
-
-# Create your tests here.
 
 class VendorRegistrationTests(TestCase):
     def test_vendor_register_creates_user_and_profile(self):
@@ -55,3 +57,135 @@ class LoginTests(TestCase):
     def test_login_nonexistent_email_fails(self):
         with self.assertRaises(ValidationError):
             user_login(email="nobody@test.com", password="pass12345")
+
+class VendorRegistrationEdgeCaseTests(APITestCase):
+    """Edge cases for vendor registration via the API."""
+
+    def setUp(self):
+        self.url = reverse("accounts:vendor-register")
+
+    def test_vendor_register_rejects_short_password(self):
+        response = self.client.post(self.url, {
+            "email": "vendor_short@test.com",
+            "password": "abc",
+            "business_name": "TechCorp",
+            "owner_name": "Owner",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_vendor_register_rejects_common_password(self):
+        response = self.client.post(self.url, {
+            "email": "vendor_common@test.com",
+            "password": "password",
+            "business_name": "TechCorp",
+            "owner_name": "Owner",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_vendor_register_rejects_numeric_password(self):
+        response = self.client.post(self.url, {
+            "email": "vendor_num@test.com",
+            "password": "12345678",
+            "business_name": "TechCorp",
+            "owner_name": "Owner",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_vendor_register_rejects_oversized_business_name(self):
+        response = self.client.post(self.url, {
+            "email": "vendor_long@test.com",
+            "password": "StrongPass123!",
+            "business_name": "a" * 256,
+            "owner_name": "Owner",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_vendor_register_rejects_oversized_owner_name(self):
+        response = self.client.post(self.url, {
+            "email": "vendor_longowner@test.com",
+            "password": "StrongPass123!",
+            "business_name": "TechCorp",
+            "owner_name": "b" * 256,
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_vendor_register_rejects_invalid_email(self):
+        response = self.client.post(self.url, {
+            "email": "not-an-email",
+            "password": "StrongPass123!",
+            "business_name": "TechCorp",
+            "owner_name": "Owner",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class EmployeeRegistrationEdgeCaseTests(APITestCase):
+    """Edge cases for employee registration via the API."""
+
+    def setUp(self):
+        self.url = reverse("accounts:employee-register")
+
+    def test_employee_register_rejects_short_password(self):
+        response = self.client.post(self.url, {
+            "email": "emp_short@test.com",
+            "password": "abc",
+            "full_name": "Test User",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_employee_register_rejects_oversized_full_name(self):
+        response = self.client.post(self.url, {
+            "email": "emp_long@test.com",
+            "password": "StrongPass123!",
+            "full_name": "c" * 256,
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_employee_register_rejects_duplicate_email(self):
+        AppUser.objects.create_user(
+            email="emp_dup@test.com", password="StrongPass123!", role="EMPLOYEE"
+        )
+        response = self.client.post(self.url, {
+            "email": "emp_dup@test.com",
+            "password": "StrongPass123!",
+            "full_name": "Test",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class LoginEdgeCaseTests(APITestCase):
+    """Edge cases for login via the API."""
+
+    def setUp(self):
+        self.url = reverse("accounts:login")
+        self.user = AppUser.objects.create_user(
+            email="login_edge@test.com",
+            password="StrongPass123!",
+            role="EMPLOYEE",
+        )
+
+    def test_login_fails_for_inactive_user(self):
+        self.user.is_active = False
+        self.user.save()
+        response = self.client.post(self.url, {
+            "email": "login_edge@test.com",
+            "password": "StrongPass123!",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_login_returns_user_metadata(self):
+        response = self.client.post(self.url, {
+            "email": "login_edge@test.com",
+            "password": "StrongPass123!",
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["email"], "login_edge@test.com")
+        self.assertEqual(response.data["role"], "EMPLOYEE")
+        self.assertIn("id", response.data)
+
+    def test_login_rejects_invalid_email_format(self):
+        response = self.client.post(self.url, {
+            "email": "not-an-email",
+            "password": "StrongPass123!",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

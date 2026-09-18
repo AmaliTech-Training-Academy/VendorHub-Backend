@@ -1,4 +1,4 @@
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -12,15 +12,15 @@ class VendorRegisterApi(APIView):
     permission_classes = [AllowAny]
 
     class InputSerializer(serializers.Serializer):
-        email = serializers.EmailField()
-        password = serializers.CharField(write_only=True)
-        business_name = serializers.CharField()
-        owner_name = serializers.CharField()
+        email = serializers.EmailField(max_length=254)
+        password = serializers.CharField(write_only=True, min_length=8, max_length=128)
+        business_name = serializers.CharField(max_length=255)
+        owner_name = serializers.CharField(max_length=255)
 
     class OutputSerializer(serializers.Serializer):
         id = serializers.IntegerField()
         email = serializers.EmailField()
-        role = serializers.CharField()
+        role = serializers.CharField(max_length=20)
 
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
@@ -28,8 +28,8 @@ class VendorRegisterApi(APIView):
 
         try:
             user = vendor_register(**serializer.validated_data)
-        except ValidationError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except DjangoValidationError as e:
+            return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(self.OutputSerializer(user).data, status=status.HTTP_201_CREATED)
 
@@ -38,14 +38,14 @@ class EmployeeRegisterApi(APIView):
     permission_classes = [AllowAny]
 
     class InputSerializer(serializers.Serializer):
-        email = serializers.EmailField()
-        password = serializers.CharField(write_only=True)
-        full_name = serializers.CharField()
+        email = serializers.EmailField(max_length=254)
+        password = serializers.CharField(write_only=True, min_length=8, max_length=128)
+        full_name = serializers.CharField(max_length=255)
 
     class OutputSerializer(serializers.Serializer):
         id = serializers.IntegerField()
         email = serializers.EmailField()
-        role = serializers.CharField()
+        role = serializers.CharField(max_length=20)
 
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
@@ -53,8 +53,8 @@ class EmployeeRegisterApi(APIView):
 
         try:
             user = employee_register(**serializer.validated_data)
-        except ValidationError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except DjangoValidationError as e:
+            return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(self.OutputSerializer(user).data, status=status.HTTP_201_CREATED)
 
@@ -63,8 +63,8 @@ class LoginApi(APIView):
     permission_classes = [AllowAny]
 
     class InputSerializer(serializers.Serializer):
-        email = serializers.EmailField()
-        password = serializers.CharField(write_only=True)
+        email = serializers.EmailField(max_length=254)
+        password = serializers.CharField(write_only=True, max_length=128)
 
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
@@ -72,8 +72,8 @@ class LoginApi(APIView):
 
         try:
             user = user_login(**serializer.validated_data)
-        except ValidationError as e:
-            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except DjangoValidationError as e:
+            return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
 
         refresh = RefreshToken.for_user(user)
         return Response({
