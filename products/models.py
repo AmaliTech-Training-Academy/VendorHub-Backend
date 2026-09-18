@@ -4,7 +4,7 @@ from django.db import models
 
 class Product(models.Model):
     vendor = models.ForeignKey(
-        'vendors.VendorProfile', 
+        'accounts.VendorProfile', 
         related_name='products', 
         on_delete=models.CASCADE
         )

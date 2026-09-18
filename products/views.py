@@ -1,6 +1,5 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-
 from .models import Product
 from .selectors import products_get
 from .serializers import ProductSerializer
@@ -12,12 +11,12 @@ from .services import (
 
 
 @api_view(["GET", "POST"])
-def products(request, vendor_id):
+def products(request):
+    vendor = request.user.vendor_profile
 
     if request.method == "GET":
-        products = products_get(vendor_id=vendor_id)
+        products = products_get(vendor_id=vendor.id)
         serializer = ProductSerializer(products, many=True)
-
         return Response(serializer.data)
 
     if request.method == "POST":
@@ -25,7 +24,7 @@ def products(request, vendor_id):
 
         if serializer.is_valid():
             product = product_create(
-                vendor_id=vendor_id,
+                vendor_id=vendor.id,
                 user=request.user,
                 **serializer.validated_data,
             )
@@ -39,10 +38,12 @@ def products(request, vendor_id):
 
 
 @api_view(["PATCH", "DELETE"])
-def product_detail(request, vendor_id, product_id):
+def product_detail(request, product_id):
+    vendor = request.user.vendor_profile
+
     product = Product.objects.get(
         id=product_id,
-        vendor_id=vendor_id,
+        vendor_id=vendor.id,
     )
 
     if request.method == "PATCH":
@@ -69,4 +70,7 @@ def product_detail(request, vendor_id, product_id):
             user=request.user,
         )
 
-        return Response(status=204)
+        return Response(
+            {"message": "Product deleted successfully."},
+            status=200,
+        )
