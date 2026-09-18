@@ -45,12 +45,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    "rest_framework",
-    "corsheaders",
-    "accounts",
-    "vendors",
-    "products",
-    "orders",
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'drf_spectacular',
+    'corsheaders',
+    'accounts',
+    'orders',
+    'products',
+    'vendors',
 ]
 
 MIDDLEWARE = [
@@ -143,4 +145,19 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+
 ]
+AUTH_USER_MODEL = 'accounts.AppUser'
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "VendorHub API",
+    "DESCRIPTION": "API for vendor and employee authentication, product catalogue, and ordering",
+    "VERSION": "1.0.0",
+}
