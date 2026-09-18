@@ -1,3 +1,72 @@
-from django.shortcuts import render
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 
-# Create your views here.
+from .models import Product
+from .selectors import products_get
+from .serializers import ProductSerializer
+from .services import (
+    product_create,
+    product_delete,
+    product_update,
+)
+
+
+@api_view(["GET", "POST"])
+def products(request, vendor_id):
+
+    if request.method == "GET":
+        products = products_get(vendor_id=vendor_id)
+        serializer = ProductSerializer(products, many=True)
+
+        return Response(serializer.data)
+
+    if request.method == "POST":
+        serializer = ProductSerializer(data=request.data)
+
+        if serializer.is_valid():
+            product = product_create(
+                vendor_id=vendor_id,
+                user=request.user,
+                **serializer.validated_data,
+            )
+
+            return Response(
+                ProductSerializer(product).data,
+                status=201,
+            )
+
+        return Response(serializer.errors, status=400)
+
+
+@api_view(["PATCH", "DELETE"])
+def product_detail(request, vendor_id, product_id):
+    product = Product.objects.get(
+        id=product_id,
+        vendor_id=vendor_id,
+    )
+
+    if request.method == "PATCH":
+        serializer = ProductSerializer(
+            product,
+            data=request.data,
+            partial=True,
+        )
+
+        if serializer.is_valid():
+            product = product_update(
+                product=product,
+                user=request.user,
+                **serializer.validated_data,
+            )
+
+            return Response(ProductSerializer(product).data)
+
+        return Response(serializer.errors, status=400)
+
+    if request.method == "DELETE":
+        product_delete(
+            product=product,
+            user=request.user,
+        )
+
+        return Response(status=204)
