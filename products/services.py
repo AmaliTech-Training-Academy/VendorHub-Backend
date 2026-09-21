@@ -1,10 +1,13 @@
 from rest_framework.exceptions import PermissionDenied
+from django.utils import timezone
 
 from .models import Product
 
 
 def product_create(*, vendor_id, user, **data):
-    if user.vendor_profile.id != vendor_id:
+    vendor_profile = getattr(user, "vendor_profile", None)
+
+    if vendor_profile is None or vendor_profile.id != vendor_id:
         raise PermissionDenied(
             "You can only create products for your own vendor account."
         )
@@ -40,4 +43,5 @@ def product_delete(*, product, user):
             "You can only delete your own products."
         )
 
-    product.delete()
+    product.deleted_at = timezone.now()
+    product.save(update_fields=["deleted_at"])
