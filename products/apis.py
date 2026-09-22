@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from .pagination import ProductPagination
 from .permissions import IsVendor
-from .selectors import products_get
+from .selectors import products_get, products_get_all
 from .serializers import ProductSerializer
 from .services import (
     get_owned_product,
@@ -38,6 +38,24 @@ class ProductListCreateApi(GenericAPIView):
             ProductSerializer(product).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class ProductStorefrontApi(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        products = products_get_all()
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)
+
+
+class ProductStorefrontApi(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        products = products_get_all()
+        serializer = ProductSerializer(products, many=True)
+        return Response(serializer.data)
 
 
 class ProductDetailApi(APIView):
