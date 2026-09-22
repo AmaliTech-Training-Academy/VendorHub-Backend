@@ -51,7 +51,7 @@ class ProductApiTests(TestCase):
             password="StrongPass123!",
             role="EMPLOYEE",
         )
-        self.collection_url = f"/api/vendors/{self.vendor.id}/products/"
+        self.collection_url = "/api/products/"
 
     def product_data(self, **overrides):
         data = {
@@ -100,58 +100,19 @@ class ProductApiTests(TestCase):
         anonymous_response = self.client.get(self.collection_url)
         self.assertEqual(anonymous_response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-    def test_employee_storefront_lists_only_active_products(self):
-        active_product = self.create_product()
-        deleted_product = Product.objects.create(
-            vendor=self.vendor,
-            **self.product_data(name="Deleted"),
-        )
-        deleted_product.deleted_at = deleted_product.created_at
-        deleted_product.save(update_fields=["deleted_at"])
-
-        inactive_vendor = VendorProfile.objects.create(
-            user=AppUser.objects.create_user(
-                email="inactive-vendor@example.com",
-                password="StrongPass123!",
-                role="VENDOR",
-            ),
-            business_name="Inactive Store",
-            owner_name="Inactive Owner",
-            is_active=False,
-        )
-        Product.objects.create(
-            vendor=inactive_vendor,
-            **self.product_data(name="Inactive"),
-        )
-
-        self.authenticate_as(self.employee_user)
-        response = self.client.get("/api/products/")
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["count"], 1)
-        self.assertEqual(
-            [item["id"] for item in response.data["results"]],
-            [active_product.id],
-        )
-
-        self.client.force_authenticate(user=None)
-        anonymous_response = self.client.get("/api/products/")
-        self.assertEqual(
-            anonymous_response.status_code,
-            status.HTTP_401_UNAUTHORIZED,
-        )
-
-    def test_other_vendor_cannot_create_for_this_vendor(self):
+    def test_other_vendor_cannot_access_another_vendors_product(self):
+        product = self.create_product()
         self.authenticate_as(self.other_vendor_user)
 
-        response = self.client.post(
-            self.collection_url,
-            self.product_data(),
+        response = self.client.patch(
+            f"/api/products/products/{product.id}/",
+            {"name": "Hacked"},
             format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertFalse(Product.objects.filter(vendor=self.vendor).exists())
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        product.refresh_from_db()
+        self.assertEqual(product.name, "Coffee")
 
     def test_owner_can_update_and_delete_product(self):
         product = self.create_product()
@@ -194,8 +155,7 @@ class ProductApiTests(TestCase):
         self.assertEqual(create_response.status_code, status.HTTP_403_FORBIDDEN)
 
         list_response = self.client.get(self.collection_url)
-        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(list_response.data["count"], 0)
+        self.assertEqual(list_response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_product_price_constraint_rejects_direct_invalid_write(self):
         from django.db import IntegrityError

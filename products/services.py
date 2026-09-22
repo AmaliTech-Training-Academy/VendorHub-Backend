@@ -5,13 +5,11 @@ from .models import Product
 from .selectors import product_get
 
 
-def get_vendor_for_user(*, user, vendor_id):
+def get_vendor_for_user(user):
     vendor_profile = getattr(user, "vendor_profile", None)
 
-    if vendor_profile is None or vendor_profile.id != vendor_id:
-        raise PermissionDenied(
-            "You can only manage products for your own vendor account."
-        )
+    if vendor_profile is None:
+        raise PermissionDenied("Only vendors can manage products.")
 
     if not vendor_profile.is_active:
         raise PermissionDenied("Inactive vendors cannot manage products.")
@@ -19,16 +17,16 @@ def get_vendor_for_user(*, user, vendor_id):
     return vendor_profile
 
 
-def get_owned_product(*, user, vendor_id, product_id):
-    get_vendor_for_user(user=user, vendor_id=vendor_id)
-    return product_get(vendor_id=vendor_id, product_id=product_id)
+def get_owned_product(*, user, product_id):
+    vendor = get_vendor_for_user(user)
+    return product_get(vendor_id=vendor.id, product_id=product_id)
 
 
-def product_create(*, vendor_id, user, **data):
-    get_vendor_for_user(user=user, vendor_id=vendor_id)
+def product_create(*, user, **data):
+    vendor = get_vendor_for_user(user)
 
     product = Product(
-        vendor_id=vendor_id,
+        vendor=vendor,
         **data,
     )
     product.full_clean()
@@ -38,7 +36,9 @@ def product_create(*, vendor_id, user, **data):
 
 
 def product_update(*, product, user, **data):
-    get_vendor_for_user(user=user, vendor_id=product.vendor_id)
+    vendor = get_vendor_for_user(user)
+    if product.vendor_id != vendor.id:
+        raise PermissionDenied("You can only modify your own products.")
 
     for field, value in data.items():
         setattr(product, field, value)
@@ -50,7 +50,9 @@ def product_update(*, product, user, **data):
 
 
 def product_delete(*, product, user):
-    get_vendor_for_user(user=user, vendor_id=product.vendor_id)
+    vendor = get_vendor_for_user(user)
+    if product.vendor_id != vendor.id:
+        raise PermissionDenied("You can only delete your own products.")
 
     product.deleted_at = timezone.now()
     product.save(update_fields=["deleted_at"])
