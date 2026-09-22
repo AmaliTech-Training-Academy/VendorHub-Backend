@@ -1,30 +1,31 @@
 from rest_framework import status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Product
+from .pagination import ProductPagination
+from .permissions import IsVendor
 from .selectors import products_get
 from .serializers import ProductSerializer
-from .services import product_create, product_delete, product_update
+from .services import (
+    get_owned_product,
+    product_create,
+    product_delete,
+    product_update,
+)
 
 
-class ProductListCreateApi(APIView):
-    permission_classes = [IsAuthenticated]
+class ProductListCreateApi(GenericAPIView):
+    permission_classes = [IsAuthenticated, IsVendor]
+    pagination_class = ProductPagination
 
     def get(self, request, vendor_id):
-        products = products_get(vendor_id=vendor_id)
-        serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
+        page = self.paginate_queryset(products_get(vendor_id=vendor_id))
+        serializer = ProductSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
 
     def post(self, request, vendor_id):
-        vendor = getattr(request.user, "vendor_profile", None)
-        if vendor is None or vendor.id != vendor_id:
-            raise PermissionDenied(
-                "You can only create products for your own vendor account."
-            )
-
         serializer = ProductSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         product = product_create(
@@ -40,20 +41,14 @@ class ProductListCreateApi(APIView):
 
 
 class ProductDetailApi(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsVendor]
 
     def _get_owned_product(self, request, vendor_id, product_id):
-        vendor = getattr(request.user, "vendor_profile", None)
-        if vendor is None or vendor.id != vendor_id:
-            raise PermissionDenied(
-                "You can only modify your own products."
-            )
-
-        return Product.objects.filter(
-            id=product_id,
+        return get_owned_product(
+            user=request.user,
             vendor_id=vendor_id,
-            deleted_at__isnull=True,
-        ).first()
+            product_id=product_id,
+        )
 
     def patch(self, request, vendor_id, product_id):
         product = self._get_owned_product(request, vendor_id, product_id)
