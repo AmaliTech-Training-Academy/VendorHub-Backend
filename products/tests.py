@@ -9,18 +9,18 @@ from .serializers import ProductSerializer
 
 
 class ProductSerializerTests(TestCase):
-	def test_rejects_non_positive_price_with_clear_message(self):
-		for price in ("0", "-1"):
-			with self.subTest(price=price):
-				serializer = ProductSerializer(
-					data={"name": "Coffee", "price": price}
-				)
+    def test_rejects_non_positive_price_with_clear_message(self):
+        for price in ("0", "-1"):
+            with self.subTest(price=price):
+                serializer = ProductSerializer(
+                    data={"name": "Coffee", "price": price}
+                )
 
-				self.assertFalse(serializer.is_valid())
-				self.assertEqual(
-					str(serializer.errors["price"][0]),
-					"Price must be greater than 0.",
-				)
+                self.assertFalse(serializer.is_valid())
+                self.assertEqual(
+                    str(serializer.errors["price"][0]),
+                    "Price must be greater than 0.",
+                )
 
 
 class ProductApiTests(TestCase):
@@ -99,6 +99,47 @@ class ProductApiTests(TestCase):
 		self.client.force_authenticate(user=None)
 		anonymous_response = self.client.get(self.collection_url)
 		self.assertEqual(anonymous_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+	def test_employee_storefront_lists_only_active_products(self):
+		active_product = self.create_product()
+		deleted_product = Product.objects.create(
+			vendor=self.vendor,
+			**self.product_data(name="Deleted"),
+		)
+		deleted_product.deleted_at = deleted_product.created_at
+		deleted_product.save(update_fields=["deleted_at"])
+
+		inactive_vendor = VendorProfile.objects.create(
+			user=AppUser.objects.create_user(
+				email="inactive-vendor@example.com",
+				password="StrongPass123!",
+				role="VENDOR",
+			),
+			business_name="Inactive Store",
+			owner_name="Inactive Owner",
+			is_active=False,
+		)
+		Product.objects.create(
+			vendor=inactive_vendor,
+			**self.product_data(name="Inactive"),
+		)
+
+		self.authenticate_as(self.employee_user)
+		response = self.client.get("/api/products/")
+
+		self.assertEqual(response.status_code, status.HTTP_200_OK)
+		self.assertEqual(response.data["count"], 1)
+		self.assertEqual(
+			[item["id"] for item in response.data["results"]],
+			[active_product.id],
+		)
+
+		self.client.force_authenticate(user=None)
+		anonymous_response = self.client.get("/api/products/")
+		self.assertEqual(
+			anonymous_response.status_code,
+			status.HTTP_401_UNAUTHORIZED,
+		)
 
 	def test_other_vendor_cannot_create_for_this_vendor(self):
 		self.authenticate_as(self.other_vendor_user)

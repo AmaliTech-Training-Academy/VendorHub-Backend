@@ -40,13 +40,14 @@ class ProductListCreateApi(GenericAPIView):
         )
 
 
-class ProductStorefrontApi(APIView):
+class ProductStorefrontApi(GenericAPIView):
     permission_classes = [IsAuthenticated]
+    pagination_class = ProductPagination
 
     def get(self, request):
-        products = products_get_all()
-        serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
+        page = self.paginate_queryset(products_get_all())
+        serializer = ProductSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
 
 
 class ProductDetailApi(APIView):
