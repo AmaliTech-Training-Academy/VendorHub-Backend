@@ -49,15 +49,6 @@ class ProductStorefrontApi(APIView):
         return Response(serializer.data)
 
 
-class ProductStorefrontApi(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        products = products_get_all()
-        serializer = ProductSerializer(products, many=True)
-        return Response(serializer.data)
-
-
 class ProductDetailApi(APIView):
     permission_classes = [IsAuthenticated, IsVendor]
 
