@@ -377,7 +377,7 @@ requires-dist = [
     { name = "django-cors-headers", specifier = "==4.9.0" },
     { name = "django-environ", specifier = ">=0.14.0" },
     { name = "djangorestframework", specifier = "==3.18.1" },
-    { name = "djangorestframework-simplejwt", specifier = ">=5.3.0" },
+    { name = "djangorestframework-simplejwt", specifier = ">=5.5.1" },
     { name = "drf-spectacular", specifier = ">=0.27.0" },
     { name = "psycopg", specifier = "==3.3.5" },
     { name = "psycopg-binary", specifier = "==3.3.5" },
