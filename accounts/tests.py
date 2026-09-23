@@ -189,3 +189,62 @@ class LoginEdgeCaseTests(APITestCase):
             "password": "StrongPass123!",
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+class PasswordSecurityTests(APITestCase):
+
+    def setUp(self):
+        self.register_url = reverse("accounts:vendor-register")
+        self.login_url = reverse("accounts:login")
+
+    def test_password_is_hashed_in_database(self):
+        self.client.post(self.register_url, {
+            "email": "hash_check@test.com",
+            "password": "StrongPass123!",
+            "business_name": "HashShop",
+            "owner_name": "Hash Owner",
+        })
+        user = AppUser.objects.get(email="hash_check@test.com")
+
+        self.assertNotEqual(user.password, "StrongPass123!")
+
+        self.assertTrue(
+            user.password.startswith("pbkdf2_sha256$"),
+            f"Expected hashed password, got: {user.password[:30]}"
+        )
+
+        self.assertTrue(user.check_password("StrongPass123!"))
+
+    def test_login_wrong_password_returns_generic_error(self):
+        AppUser.objects.create_user(
+            email="generic@test.com", password="StrongPass123!", role="EMPLOYEE",
+        )
+        response = self.client.post(self.login_url, {
+            "email": "generic@test.com",
+            "password": "WrongPassword999!",
+        })
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        response_text = str(response.data).lower()
+        self.assertIn("invalid email or password", response_text)
+        self.assertNotIn("wrong password", response_text)
+        self.assertNotIn("incorrect password", response_text)
+        self.assertNotIn("user not found", response_text)
+        self.assertNotIn("email not found", response_text)
+        self.assertNotIn("email does not exist", response_text)
+
+    def test_login_unknown_email_returns_same_generic_error(self):
+        r1 = self.client.post(self.login_url, {
+            "email": "ghost@test.com",
+            "password": "StrongPass123!",
+        })
+
+        AppUser.objects.create_user(
+            email="real@test.com", password="StrongPass123!", role="EMPLOYEE",
+        )
+        r2 = self.client.post(self.login_url, {
+            "email": "real@test.com",
+            "password": "WrongPassword999!",
+        })
+
+        self.assertEqual(r1.status_code, r2.status_code)
+        self.assertEqual(r1.data, r2.data)
