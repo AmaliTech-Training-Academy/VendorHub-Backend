@@ -1,8 +1,10 @@
 from django.urls import path
-from .views import VendorListView, VendorProductListView
+
+from .apis import VendorListApi, VendorProductListApi
+
+app_name = "vendors"
 
 urlpatterns = [
-    path('', VendorListView.as_view(), name='vendor-list'),
-    path('<int:pk>/products/', VendorProductListView.as_view(), name='vendor-product-list'),
+    path("", VendorListApi.as_view(), name="vendor-list"),
+    path("<int:vendor_id>/products/", VendorProductListApi.as_view(), name="vendor-product-list"),
 ]
-
