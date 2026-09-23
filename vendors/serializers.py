@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from accounts.models import VendorProfile
+from products.models import Product
 
 class VendorStorefrontSerializer(serializers.ModelSerializer):
     class Meta:
@@ -10,5 +11,16 @@ class VendorStorefrontSerializer(serializers.ModelSerializer):
             "owner_name",
             "delivery_fee",
             "is_active",
+        ]
 
+class ProductSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Product
+        fields = [
+            "id",
+            "name",
+            "description",
+            "category",
+            "price",
+            "in_stock",
         ]
