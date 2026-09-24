@@ -138,7 +138,7 @@ class MyDeliverySettingsApi(APIView):
 
     class InputSerializer(serializers.Serializer):
         class WindowSerializer(serializers.Serializer):
-            id = serializers.IntegerField(required=False)
+            id = serializers.IntegerField(required=False, min_value=1)
             window_name = serializers.CharField(max_length=100)
             start_time = serializers.TimeField()
             end_time = serializers.TimeField()

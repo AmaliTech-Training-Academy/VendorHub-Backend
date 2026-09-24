@@ -322,6 +322,21 @@ class MyDeliverySettingsTests(APITestCase):
         self.vendor.refresh_from_db()
         self.assertEqual(str(self.vendor.delivery_fee), "10.00")
 
+    def test_rejects_window_id_below_one(self):
+        # Rejected by the serializer, so the error points at the id field instead of coming from the service.
+        for window_id in (0, -3):
+            with self.subTest(window_id=window_id):
+                data = self.settings_data(time_windows=[self.window("Morning", "10:00", "12:00", id=window_id)])
+
+                response = self.save_settings(data)
+
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertIn("id", response.data["time_windows"][0])
+
+        self.vendor.refresh_from_db()
+        self.assertEqual(str(self.vendor.delivery_fee), "10.00")
+        self.assertFalse(DeliveryWindow.objects.exists())
+
     def test_requires_authentication(self):
         self.assertEqual(self.client.get(self.url).status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertEqual(
