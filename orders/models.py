@@ -1,4 +1,5 @@
 from django.db import models
+from vendors.models import DeliveryWindow
 
 # Create your models here.
 
@@ -69,21 +70,15 @@ class Order(models.Model):
             models.CheckConstraint(
                 condition=models.Q(subtotal_ghs__gt=0),
                 name="order_subtotal_gt_zero",
-            )
-        ]
-
-        constraints = [
+            ),
             models.CheckConstraint(
                 condition=models.Q(total_ghs__gt=0),
                 name="order_total_gt_zero",
-            )
-        ]
-
-        constraints = [
+            ),
             models.CheckConstraint(
                 condition=models.Q(delivery_fee_ghs__gte=0),
                 name="order_delivery_fee_gte_zero",
-            )
+            ),
         ]
 
     def __str__(self):
