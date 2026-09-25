@@ -36,7 +36,7 @@ def order_get(*, order_id):
             "delivery_window",
         )
         .prefetch_related(
-            "items__product",
+            "order_items__product",
         )
         .filter(id=order_id)
         .first()

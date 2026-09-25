@@ -13,28 +13,23 @@ from orders.selectors import (
 )
 
 
-def _employee_context(*, user, employee_name):
-    if user.is_authenticated:
-        if user.role != "EMPLOYEE":
-            raise PermissionDenied("Only employees can place orders.")
+def _employee_context(*, user):
+    if not user.is_authenticated:
+        raise PermissionDenied("Authentication is required to place an order.")
 
-        profile = getattr(user, "employee_profile", None)
-        display_name = profile.full_name if profile is not None else user.email
+    if user.role != "EMPLOYEE":
+        raise PermissionDenied("Only employees can place orders.")
 
-        return user, display_name
-
-    name = (employee_name or "").strip()
-    if not name:
-        raise ValidationError("employee_name is required for guest orders.")
-
-    return None, name
+    return user
 
 
 def _validated_products(*, vendor, items):
     product_ids = [item["product_id"] for item in items]
 
     if len(product_ids) != len(set(product_ids)):
-        raise ValidationError("Duplicate products are not allowed in one order.")
+        raise ValidationError(
+            "Duplicate products are not allowed in one order."
+        )
 
     products = list(order_products_get(product_ids=product_ids))
     products_by_id = {product.id: product for product in products}
@@ -62,7 +57,6 @@ def order_create(
     *,
     user,
     vendor_id,
-    employee_name="",
     items,
     selected_delivery_window,
 ):
@@ -71,10 +65,7 @@ def order_create(
     if vendor is None:
         raise ValidationError("Vendor not found or inactive.")
 
-    employee, display_name = _employee_context(
-        user=user,
-        employee_name=employee_name,
-    )
+    employee = _employee_context(user=user)
 
     delivery_window = delivery_window_get(
         delivery_window_id=selected_delivery_window,
@@ -83,9 +74,7 @@ def order_create(
     if delivery_window is None:
         raise ValidationError("Delivery window not found.")
 
-    if not delivery_window.is_active:
-        raise ValidationError("Selected delivery window is inactive.")
-
+    
     if delivery_window.vendor_id != vendor.id:
         raise ValidationError(
             "Delivery window does not belong to the selected vendor."
@@ -138,3 +127,4 @@ def order_create(
     OrderItem.objects.bulk_create(order_items)
 
     return order
+
