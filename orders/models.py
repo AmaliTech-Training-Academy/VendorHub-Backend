@@ -1,5 +1,5 @@
 from django.db import models
-from vendors.models import DeliveryWindow
+
 
 # Create your models here.
 
@@ -11,7 +11,7 @@ class Order(models.Model):
         CANCELLED = 'CANCELLED', 'Cancelled'
 
     employee = models.ForeignKey(
-        'accounts.AppUser',
+        'accounts.EmployeeProfile',
         on_delete=models.PROTECT,
         related_name='orders',
     )
@@ -27,6 +27,8 @@ class Order(models.Model):
         on_delete=models.PROTECT,
         related_name='orders',
     )
+
+    delivery_date = models.DateField()
 
     order_code = models.CharField(
         max_length=255,
@@ -46,18 +48,18 @@ class Order(models.Model):
     selected_start_time = models.TimeField()
     selected_end_time = models.TimeField()
 
-    subtotal_ghs = models.DecimalField(
+    subtotal = models.DecimalField(
         max_digits=10,
         decimal_places=2,
     )
 
-    delivery_fee_ghs = models.DecimalField(
+    delivery_fee = models.DecimalField(
         max_digits=10,
         decimal_places=2,
         default=0
     )
 
-    total_ghs = models.DecimalField(
+    total = models.DecimalField(
         max_digits=10,
         decimal_places=2,
     )
@@ -68,22 +70,21 @@ class Order(models.Model):
     class Meta:
         constraints = [
             models.CheckConstraint(
-                condition=models.Q(subtotal_ghs__gt=0),
+                condition=models.Q(subtotal__gt=0),
                 name="order_subtotal_gt_zero",
             ),
             models.CheckConstraint(
-                condition=models.Q(total_ghs__gt=0),
+                condition=models.Q(total__gt=0),
                 name="order_total_gt_zero",
             ),
             models.CheckConstraint(
-                condition=models.Q(delivery_fee_ghs__gte=0),
+                condition=models.Q(delivery_fee__gte=0),
                 name="order_delivery_fee_gte_zero",
             ),
         ]
 
     def __str__(self):
         return self.order_code
-
 
 class OrderItem(models.Model):
     order = models.ForeignKey(

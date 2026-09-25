@@ -1,5 +1,6 @@
 from decimal import Decimal
 from uuid import uuid4
+from accounts.models import EmployeeProfile
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
@@ -11,16 +12,22 @@ from orders.selectors import (
     delivery_window_get,
     order_products_get,
 )
+from vendors.models import Weekday
 
 
 def _employee_context(*, user):
     if not user.is_authenticated:
-        raise PermissionDenied("Authentication is required to place an order.")
+        raise PermissionDenied(
+            "Authentication is required to place an order."
+        )
 
     if user.role != "EMPLOYEE":
         raise PermissionDenied("Only employees can place orders.")
-
-    return user
+    try:
+        return user.employee_profile
+    except EmployeeProfile.DoesNotExist:
+        raise PermissionDenied("Employee profile is required to place an order.")
+    
 
 
 def _validated_products(*, vendor, items):
@@ -41,7 +48,9 @@ def _validated_products(*, vendor, items):
             raise ValidationError("Product not found.")
 
         if product.vendor_id != vendor.id:
-            raise ValidationError("Product belongs to another vendor.")
+            raise ValidationError(
+                "Product belongs to another vendor."
+            )
 
         if product.deleted_at is not None:
             raise ValidationError("Product has been deleted.")
@@ -59,6 +68,7 @@ def order_create(
     vendor_id,
     items,
     selected_delivery_window,
+    delivery_date,
 ):
     vendor = active_vendor_get(vendor_id=vendor_id)
 
@@ -74,7 +84,28 @@ def order_create(
     if delivery_window is None:
         raise ValidationError("Delivery window not found.")
 
-    
+    today = timezone.localdate()
+
+    if delivery_date < today:
+        raise ValidationError(
+            "Delivery date cannot be in the past."
+        )
+
+    weekday = Weekday.values[delivery_date.weekday()]
+
+    if weekday not in delivery_window.available_days:
+        raise ValidationError(
+            "Selected delivery window is not available on this date."
+        )
+
+    if (
+        delivery_date == today
+        and timezone.localtime().time() >= delivery_window.start_time
+    ):
+        raise ValidationError(
+            "Selected delivery window has already started today."
+        )
+
     if delivery_window.vendor_id != vendor.id:
         raise ValidationError(
             "Delivery window does not belong to the selected vendor."
@@ -106,18 +137,23 @@ def order_create(
 
     delivery_fee = vendor.delivery_fee or Decimal("0.00")
     total_amount = subtotal + delivery_fee
+    if total_amount > Decimal("999999999.99"):
+        raise ValidationError(
+            "Order total exceeds the maximum amount."
+        )
 
     order = Order.objects.create(
         employee=employee,
         vendor=vendor,
         delivery_window=delivery_window,
+        delivery_date=delivery_date,
         order_code=f"VH-{timezone.now():%Y%m%d}-{uuid4().hex[:8].upper()}",
         selected_window_name=delivery_window.window_name,
         selected_start_time=delivery_window.start_time,
         selected_end_time=delivery_window.end_time,
-        subtotal_ghs=subtotal,
-        delivery_fee_ghs=delivery_fee,
-        total_ghs=total_amount,
+        subtotal=subtotal,
+        delivery_fee=delivery_fee,
+        total=total_amount,
         status=Order.Status.PENDING,
     )
 
@@ -127,4 +163,3 @@ def order_create(
     OrderItem.objects.bulk_create(order_items)
 
     return order
-

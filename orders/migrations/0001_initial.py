@@ -26,9 +26,9 @@ class Migration(migrations.Migration):
                 ('status', models.CharField(choices=[('PENDING', 'Pending'), ('CONFIRMED', 'Confirmed'), ('DELIVERED', 'Delivered'), ('CANCELLED', 'Cancelled')], default='PENDING', max_length=20)),
                 ('selected_start_time', models.TimeField()),
                 ('selected_end_time', models.TimeField()),
-                ('subtotal_ghs', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('delivery_fee_ghs', models.DecimalField(decimal_places=2, default=0, max_digits=10)),
-                ('total_ghs', models.DecimalField(decimal_places=2, max_digits=10)),
+                ('subtotal', models.DecimalField(decimal_places=2, max_digits=10)),
+                ('delivery_fee', models.DecimalField(decimal_places=2, default=0, max_digits=10)),
+                ('total', models.DecimalField(decimal_places=2, max_digits=10)),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('updated_at', models.DateTimeField(auto_now=True)),
                 ('delivery_window', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='orders', to='vendors.deliverywindow')),
@@ -49,7 +49,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='order',
-            constraint=models.CheckConstraint(condition=models.Q(('delivery_fee_ghs__gte', 0)), name='order_delivery_fee_gte_zero'),
+            constraint=models.CheckConstraint(condition=models.Q(('delivery_fee__gte', 0)), name='order_delivery_fee_gte_zero'),
         ),
         migrations.AddConstraint(
             model_name='orderitem',
