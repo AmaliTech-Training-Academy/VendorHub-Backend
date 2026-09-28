@@ -1,5 +1,6 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers, status
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -21,7 +22,10 @@ class VendorRegisterApi(APIView):
         id = serializers.IntegerField()
         email = serializers.EmailField()
         role = serializers.CharField(max_length=20)
-
+    @extend_schema(
+    request=InputSerializer,
+    responses={201: OutputSerializer},
+      )
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -46,7 +50,10 @@ class EmployeeRegisterApi(APIView):
         id = serializers.IntegerField()
         email = serializers.EmailField()
         role = serializers.CharField(max_length=20)
-
+    @extend_schema(
+    request=InputSerializer,
+    responses={201: OutputSerializer},
+      )
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -66,6 +73,16 @@ class LoginApi(APIView):
         email = serializers.EmailField(max_length=254)
         password = serializers.CharField(write_only=True, max_length=128)
 
+    class OutputSerializer(serializers.Serializer):
+        access = serializers.CharField()
+        refresh = serializers.CharField()
+        id = serializers.IntegerField()
+        email = serializers.EmailField()
+        role = serializers.CharField(max_length=20)
+    @extend_schema(
+    request=InputSerializer,
+    responses={200: OutputSerializer},
+       )
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

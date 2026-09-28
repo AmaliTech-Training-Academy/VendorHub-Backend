@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('order_code', models.CharField(max_length=255, unique=True)),
                 ('selected_window_name', models.CharField(max_length=255)),
-                ('status', models.CharField(choices=[('PENDING', 'Pending'), ('CONFIRMED', 'Confirmed'), ('DELIVERED', 'Delivered'), ('CANCELLED', 'Cancelled')], default='PENDING', max_length=20)),
+                ('status', models.CharField(choices=[('RECEIVED', 'RECEIVED'), ('PREPARING', 'PREPARING'), ('READY FOR COLLECTION', 'READY FOR COLLECTION'), ('CANCELLED', 'Cancelled')], default='RECEIVED', max_length=20)),
                 ('selected_start_time', models.TimeField()),
                 ('selected_end_time', models.TimeField()),
                 ('subtotal', models.DecimalField(decimal_places=2, max_digits=10)),

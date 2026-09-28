@@ -8,6 +8,7 @@ def active_vendor_get(*, vendor_id):
     return VendorProfile.objects.filter(
         id=vendor_id,
         is_active=True,
+        user__is_active=True,
     ).first()
 
 
