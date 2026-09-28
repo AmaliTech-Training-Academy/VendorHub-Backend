@@ -2,208 +2,209 @@ openapi: 3.0.3
 info:
   title: VendorHub API
   version: 1.0.0
-  description: API for vendor and employee authentication, product catalogue, and
+  description:
+    API for vendor and employee authentication, product catalogue, and
     ordering
 paths:
   /api/accounts/employee/register/:
     post:
       operationId: accounts_employee_register_create
       tags:
-      - accounts
+        - accounts
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/EmployeeRegisterInput'
+              $ref: "#/components/schemas/EmployeeRegisterInput"
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/EmployeeRegisterInput'
+              $ref: "#/components/schemas/EmployeeRegisterInput"
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/EmployeeRegisterInput'
+              $ref: "#/components/schemas/EmployeeRegisterInput"
         required: true
       security:
-      - jwtAuth: []
-      - cookieAuth: []
-      - {}
+        - jwtAuth: []
+        - cookieAuth: []
+        - {}
       responses:
-        '201':
+        "201":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EmployeeRegisterOutput'
-          description: ''
+                $ref: "#/components/schemas/EmployeeRegisterOutput"
+          description: ""
   /api/accounts/login/:
     post:
       operationId: accounts_login_create
       tags:
-      - accounts
+        - accounts
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginInput'
+              $ref: "#/components/schemas/LoginInput"
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/LoginInput'
+              $ref: "#/components/schemas/LoginInput"
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/LoginInput'
+              $ref: "#/components/schemas/LoginInput"
         required: true
       security:
-      - jwtAuth: []
-      - cookieAuth: []
-      - {}
+        - jwtAuth: []
+        - cookieAuth: []
+        - {}
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginOutput'
-          description: ''
+                $ref: "#/components/schemas/LoginOutput"
+          description: ""
   /api/accounts/vendor/register/:
     post:
       operationId: accounts_vendor_register_create
       tags:
-      - accounts
+        - accounts
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VendorRegisterInput'
+              $ref: "#/components/schemas/VendorRegisterInput"
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/VendorRegisterInput'
+              $ref: "#/components/schemas/VendorRegisterInput"
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/VendorRegisterInput'
+              $ref: "#/components/schemas/VendorRegisterInput"
         required: true
       security:
-      - jwtAuth: []
-      - cookieAuth: []
-      - {}
+        - jwtAuth: []
+        - cookieAuth: []
+        - {}
       responses:
-        '201':
+        "201":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VendorRegisterOutput'
-          description: ''
+                $ref: "#/components/schemas/VendorRegisterOutput"
+          description: ""
   /api/orders/:
     post:
       operationId: orders_create
       tags:
-      - orders
+        - orders
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/OrderCreateInput'
+              $ref: "#/components/schemas/OrderCreateInput"
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/OrderCreateInput'
+              $ref: "#/components/schemas/OrderCreateInput"
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/OrderCreateInput'
+              $ref: "#/components/schemas/OrderCreateInput"
         required: true
       security:
-      - jwtAuth: []
-      - cookieAuth: []
+        - jwtAuth: []
+        - cookieAuth: []
       responses:
-        '201':
+        "201":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OrderCreateOutput'
-          description: ''
+                $ref: "#/components/schemas/OrderCreateOutput"
+          description: ""
   /api/products/:
     get:
       operationId: products_retrieve
       tags:
-      - products
+        - products
       security:
-      - jwtAuth: []
-      - cookieAuth: []
+        - jwtAuth: []
+        - cookieAuth: []
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Output'
-          description: ''
+                $ref: "#/components/schemas/Output"
+          description: ""
     post:
       operationId: products_create
       tags:
-      - products
+        - products
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Input'
+              $ref: "#/components/schemas/Input"
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/Input'
+              $ref: "#/components/schemas/Input"
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Input'
+              $ref: "#/components/schemas/Input"
         required: true
       security:
-      - jwtAuth: []
-      - cookieAuth: []
+        - jwtAuth: []
+        - cookieAuth: []
       responses:
-        '201':
+        "201":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Output'
-          description: ''
+                $ref: "#/components/schemas/Output"
+          description: ""
   /api/products/{product_id}/:
     patch:
       operationId: products_partial_update
       parameters:
-      - in: path
-        name: product_id
-        schema:
-          type: integer
-        required: true
+        - in: path
+          name: product_id
+          schema:
+            type: integer
+          required: true
       tags:
-      - products
+        - products
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchedInput'
+              $ref: "#/components/schemas/PatchedInput"
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/PatchedInput'
+              $ref: "#/components/schemas/PatchedInput"
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/PatchedInput'
+              $ref: "#/components/schemas/PatchedInput"
       security:
-      - jwtAuth: []
-      - cookieAuth: []
+        - jwtAuth: []
+        - cookieAuth: []
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ProductDetailOutput'
-          description: ''
+                $ref: "#/components/schemas/ProductDetailOutput"
+          description: ""
     delete:
       operationId: products_destroy
       parameters:
-      - in: path
-        name: product_id
-        schema:
-          type: integer
-        required: true
+        - in: path
+          name: product_id
+          schema:
+            type: integer
+          required: true
       tags:
-      - products
+        - products
       security:
-      - jwtAuth: []
-      - cookieAuth: []
+        - jwtAuth: []
+        - cookieAuth: []
       responses:
-        '204':
+        "204":
           description: No response body
   /api/schema/:
     get:
@@ -214,125 +215,125 @@ paths:
         - YAML: application/vnd.oai.openapi
         - JSON: application/vnd.oai.openapi+json
       parameters:
-      - in: query
-        name: format
-        schema:
-          type: string
-          enum:
-          - json
-          - yaml
-      - in: query
-        name: lang
-        schema:
-          type: string
-          enum:
-          - af
-          - ar
-          - ar-dz
-          - ast
-          - az
-          - be
-          - bg
-          - bn
-          - br
-          - bs
-          - ca
-          - ckb
-          - cs
-          - cy
-          - da
-          - de
-          - dsb
-          - el
-          - en
-          - en-au
-          - en-gb
-          - eo
-          - es
-          - es-ar
-          - es-co
-          - es-mx
-          - es-ni
-          - es-ve
-          - et
-          - eu
-          - fa
-          - fi
-          - fr
-          - fy
-          - ga
-          - gd
-          - gl
-          - he
-          - hi
-          - hr
-          - hsb
-          - hu
-          - hy
-          - ia
-          - id
-          - ig
-          - io
-          - is
-          - it
-          - ja
-          - ka
-          - kab
-          - kk
-          - km
-          - kn
-          - ko
-          - ky
-          - lb
-          - lt
-          - lv
-          - mk
-          - ml
-          - mn
-          - mr
-          - ms
-          - my
-          - nb
-          - ne
-          - nl
-          - nn
-          - os
-          - pa
-          - pl
-          - pt
-          - pt-br
-          - ro
-          - ru
-          - sk
-          - sl
-          - sq
-          - sr
-          - sr-latn
-          - sv
-          - sw
-          - ta
-          - te
-          - tg
-          - th
-          - tk
-          - tr
-          - tt
-          - udm
-          - ug
-          - uk
-          - ur
-          - uz
-          - vi
-          - zh-hans
-          - zh-hant
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum:
+              - json
+              - yaml
+        - in: query
+          name: lang
+          schema:
+            type: string
+            enum:
+              - af
+              - ar
+              - ar-dz
+              - ast
+              - az
+              - be
+              - bg
+              - bn
+              - br
+              - bs
+              - ca
+              - ckb
+              - cs
+              - cy
+              - da
+              - de
+              - dsb
+              - el
+              - en
+              - en-au
+              - en-gb
+              - eo
+              - es
+              - es-ar
+              - es-co
+              - es-mx
+              - es-ni
+              - es-ve
+              - et
+              - eu
+              - fa
+              - fi
+              - fr
+              - fy
+              - ga
+              - gd
+              - gl
+              - he
+              - hi
+              - hr
+              - hsb
+              - hu
+              - hy
+              - ia
+              - id
+              - ig
+              - io
+              - is
+              - it
+              - ja
+              - ka
+              - kab
+              - kk
+              - km
+              - kn
+              - ko
+              - ky
+              - lb
+              - lt
+              - lv
+              - mk
+              - ml
+              - mn
+              - mr
+              - ms
+              - my
+              - nb
+              - ne
+              - nl
+              - nn
+              - os
+              - pa
+              - pl
+              - pt
+              - pt-br
+              - ro
+              - ru
+              - sk
+              - sl
+              - sq
+              - sr
+              - sr-latn
+              - sv
+              - sw
+              - ta
+              - te
+              - tg
+              - th
+              - tk
+              - tr
+              - tt
+              - udm
+              - ug
+              - uk
+              - ur
+              - uz
+              - vi
+              - zh-hans
+              - zh-hant
       tags:
-      - schema
+        - schema
       security:
-      - jwtAuth: []
-      - cookieAuth: []
-      - {}
+        - jwtAuth: []
+        - cookieAuth: []
+        - {}
       responses:
-        '200':
+        "200":
           content:
             application/vnd.oai.openapi:
               schema:
@@ -350,125 +351,125 @@ paths:
               schema:
                 type: object
                 additionalProperties: {}
-          description: ''
+          description: ""
   /api/vendors/:
     get:
       operationId: vendors_list
       summary: List Active Vendors
       parameters:
-      - name: page
-        required: false
-        in: query
-        description: A page number within the paginated result set.
-        schema:
-          type: integer
-      - name: page_size
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
+        - name: page
+          required: false
+          in: query
+          description: A page number within the paginated result set.
+          schema:
+            type: integer
+        - name: page_size
+          required: false
+          in: query
+          description: Number of results to return per page.
+          schema:
+            type: integer
       tags:
-      - Vendor Storefront
+        - Vendor Storefront
       security:
-      - jwtAuth: []
-      - cookieAuth: []
+        - jwtAuth: []
+        - cookieAuth: []
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedVendorStorefrontList'
-          description: ''
+                $ref: "#/components/schemas/PaginatedVendorStorefrontList"
+          description: ""
   /api/vendors/me/delivery-settings/:
     get:
       operationId: vendors_me_delivery_settings_retrieve
       summary: Get My Delivery Settings
       tags:
-      - Vendor Delivery Settings
+        - Vendor Delivery Settings
       security:
-      - jwtAuth: []
-      - cookieAuth: []
+        - jwtAuth: []
+        - cookieAuth: []
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeliverySettings'
-          description: ''
+                $ref: "#/components/schemas/DeliverySettings"
+          description: ""
     put:
       operationId: vendors_me_delivery_settings_update
       summary: Update My Delivery Settings
       tags:
-      - Vendor Delivery Settings
+        - Vendor Delivery Settings
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/DeliverySettingsInput'
+              $ref: "#/components/schemas/DeliverySettingsInput"
           application/x-www-form-urlencoded:
             schema:
-              $ref: '#/components/schemas/DeliverySettingsInput'
+              $ref: "#/components/schemas/DeliverySettingsInput"
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/DeliverySettingsInput'
+              $ref: "#/components/schemas/DeliverySettingsInput"
         required: true
       security:
-      - jwtAuth: []
-      - cookieAuth: []
+        - jwtAuth: []
+        - cookieAuth: []
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeliverySettings'
-          description: ''
+                $ref: "#/components/schemas/DeliverySettings"
+          description: ""
   /api/vendors/products/:
     get:
       operationId: vendors_products_list
       summary: List Vendor's In-Stock Products
       parameters:
-      - name: page
-        required: false
-        in: query
-        description: A page number within the paginated result set.
-        schema:
-          type: integer
-      - name: page_size
-        required: false
-        in: query
-        description: Number of results to return per page.
-        schema:
-          type: integer
-      - in: query
-        name: vendor_id
-        schema:
-          type: integer
-          minimum: 1
-        required: true
+        - name: page
+          required: false
+          in: query
+          description: A page number within the paginated result set.
+          schema:
+            type: integer
+        - name: page_size
+          required: false
+          in: query
+          description: Number of results to return per page.
+          schema:
+            type: integer
+        - in: query
+          name: vendor_id
+          schema:
+            type: integer
+            minimum: 1
+          required: true
       tags:
-      - Vendor Storefront
+        - Vendor Storefront
       security:
-      - jwtAuth: []
-      - cookieAuth: []
+        - jwtAuth: []
+        - cookieAuth: []
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedVendorProductList'
-          description: ''
+                $ref: "#/components/schemas/PaginatedVendorProductList"
+          description: ""
 components:
   schemas:
     AvailableDaysEnum:
       enum:
-      - MONDAY
-      - TUESDAY
-      - WEDNESDAY
-      - THURSDAY
-      - FRIDAY
-      - SATURDAY
-      - SUNDAY
+        - MONDAY
+        - TUESDAY
+        - WEDNESDAY
+        - THURSDAY
+        - FRIDAY
+        - SATURDAY
+        - SUNDAY
       type: string
       description: |-
         * `MONDAY` - Monday
@@ -484,7 +485,7 @@ components:
         available_days:
           type: array
           items:
-            $ref: '#/components/schemas/AvailableDaysEnum'
+            $ref: "#/components/schemas/AvailableDaysEnum"
           readOnly: true
         delivery_fee:
           type: string
@@ -493,18 +494,18 @@ components:
         time_windows:
           type: array
           items:
-            $ref: '#/components/schemas/DeliveryWindow'
+            $ref: "#/components/schemas/DeliveryWindow"
       required:
-      - available_days
-      - delivery_fee
-      - time_windows
+        - available_days
+        - delivery_fee
+        - time_windows
     DeliverySettingsInput:
       type: object
       properties:
         available_days:
           type: array
           items:
-            $ref: '#/components/schemas/AvailableDaysEnum'
+            $ref: "#/components/schemas/AvailableDaysEnum"
           minItems: 1
         delivery_fee:
           type: string
@@ -513,11 +514,11 @@ components:
         time_windows:
           type: array
           items:
-            $ref: '#/components/schemas/DeliveryWindowInput'
+            $ref: "#/components/schemas/DeliveryWindowInput"
       required:
-      - available_days
-      - delivery_fee
-      - time_windows
+        - available_days
+        - delivery_fee
+        - time_windows
     DeliveryWindow:
       type: object
       properties:
@@ -537,11 +538,11 @@ components:
           type: integer
           readOnly: true
       required:
-      - end_time
-      - id
-      - sort_order
-      - start_time
-      - window_name
+        - end_time
+        - id
+        - sort_order
+        - start_time
+        - window_name
     DeliveryWindowInput:
       type: object
       properties:
@@ -558,9 +559,9 @@ components:
           type: string
           format: time
       required:
-      - end_time
-      - start_time
-      - window_name
+        - end_time
+        - start_time
+        - window_name
     EmployeeRegisterInput:
       type: object
       properties:
@@ -577,9 +578,9 @@ components:
           type: string
           maxLength: 255
       required:
-      - email
-      - full_name
-      - password
+        - email
+        - full_name
+        - password
     EmployeeRegisterOutput:
       type: object
       properties:
@@ -592,9 +593,9 @@ components:
           type: string
           maxLength: 20
       required:
-      - email
-      - id
-      - role
+        - email
+        - id
+        - role
     Input:
       type: object
       properties:
@@ -615,8 +616,8 @@ components:
         in_stock:
           type: boolean
       required:
-      - name
-      - price
+        - name
+        - price
     LoginInput:
       type: object
       properties:
@@ -629,8 +630,8 @@ components:
           writeOnly: true
           maxLength: 128
       required:
-      - email
-      - password
+        - email
+        - password
     LoginOutput:
       type: object
       properties:
@@ -647,11 +648,11 @@ components:
           type: string
           maxLength: 20
       required:
-      - access
-      - email
-      - id
-      - refresh
-      - role
+        - access
+        - email
+        - id
+        - refresh
+        - role
     OrderCreateInput:
       type: object
       properties:
@@ -661,7 +662,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/OrderItemInput'
+            $ref: "#/components/schemas/OrderItemInput"
         selected_delivery_window:
           type: integer
           minimum: 1
@@ -669,10 +670,10 @@ components:
           type: string
           format: date
       required:
-      - delivery_date
-      - items
-      - selected_delivery_window
-      - vendor_id
+        - delivery_date
+        - items
+        - selected_delivery_window
+        - vendor_id
     OrderCreateOutput:
       type: object
       properties:
@@ -702,7 +703,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/OrderItemOutput'
+            $ref: "#/components/schemas/OrderItemOutput"
         subtotal:
           type: string
           format: decimal
@@ -711,7 +712,7 @@ components:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
-        total_amount_ghs:
+        total_amount:
           type: string
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
@@ -724,23 +725,23 @@ components:
           type: string
           format: date-time
       required:
-      - created_at
-      - delivery_date
-      - delivery_fee
-      - delivery_window
-      - employee
-      - id
-      - items
-      - order_code
-      - selected_end_time
-      - selected_start_time
-      - selected_window_name
-      - status
-      - subtotal
-      - total_amount_ghs
-      - updated_at
-      - vendor
-      - vendor_name
+        - created_at
+        - delivery_date
+        - delivery_fee
+        - delivery_window
+        - employee
+        - id
+        - items
+        - order_code
+        - selected_end_time
+        - selected_start_time
+        - selected_window_name
+        - status
+        - subtotal
+        - total_amount
+        - updated_at
+        - vendor
+        - vendor_name
     OrderItemInput:
       type: object
       properties:
@@ -752,8 +753,8 @@ components:
           maximum: 100
           minimum: 1
       required:
-      - product_id
-      - quantity
+        - product_id
+        - quantity
     OrderItemOutput:
       type: object
       properties:
@@ -774,12 +775,12 @@ components:
           format: decimal
           pattern: ^-?\d{0,8}(?:\.\d{0,2})?$
       required:
-      - id
-      - product_id
-      - product_name
-      - quantity
-      - subtotal
-      - unit_price
+        - id
+        - product_id
+        - product_name
+        - quantity
+        - subtotal
+        - unit_price
     Output:
       type: object
       properties:
@@ -822,21 +823,21 @@ components:
           readOnly: true
           nullable: true
       required:
-      - category
-      - created_at
-      - deleted_at
-      - description
-      - id
-      - in_stock
-      - name
-      - price
-      - updated_at
-      - vendor
+        - category
+        - created_at
+        - deleted_at
+        - description
+        - id
+        - in_stock
+        - name
+        - price
+        - updated_at
+        - vendor
     PaginatedVendorProductList:
       type: object
       required:
-      - count
-      - results
+        - count
+        - results
       properties:
         count:
           type: integer
@@ -854,12 +855,12 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/VendorProduct'
+            $ref: "#/components/schemas/VendorProduct"
     PaginatedVendorStorefrontList:
       type: object
       required:
-      - count
-      - results
+        - count
+        - results
       properties:
         count:
           type: integer
@@ -877,7 +878,7 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/VendorStorefront'
+            $ref: "#/components/schemas/VendorStorefront"
     PatchedInput:
       type: object
       properties:
@@ -939,16 +940,16 @@ components:
           readOnly: true
           nullable: true
       required:
-      - category
-      - created_at
-      - deleted_at
-      - description
-      - id
-      - in_stock
-      - name
-      - price
-      - updated_at
-      - vendor
+        - category
+        - created_at
+        - deleted_at
+        - description
+        - id
+        - in_stock
+        - name
+        - price
+        - updated_at
+        - vendor
     VendorProduct:
       type: object
       properties:
@@ -975,12 +976,12 @@ components:
           type: boolean
           readOnly: true
       required:
-      - category
-      - description
-      - id
-      - in_stock
-      - name
-      - price
+        - category
+        - description
+        - id
+        - in_stock
+        - name
+        - price
     VendorRegisterInput:
       type: object
       properties:
@@ -1000,10 +1001,10 @@ components:
           type: string
           maxLength: 255
       required:
-      - business_name
-      - email
-      - owner_name
-      - password
+        - business_name
+        - email
+        - owner_name
+        - password
     VendorRegisterOutput:
       type: object
       properties:
@@ -1016,9 +1017,9 @@ components:
           type: string
           maxLength: 20
       required:
-      - email
-      - id
-      - role
+        - email
+        - id
+        - role
     VendorStorefront:
       type: object
       properties:
@@ -1041,20 +1042,20 @@ components:
         available_days:
           type: array
           items:
-            $ref: '#/components/schemas/AvailableDaysEnum'
+            $ref: "#/components/schemas/AvailableDaysEnum"
           readOnly: true
         delivery_windows:
           type: array
           items:
-            $ref: '#/components/schemas/DeliveryWindow'
+            $ref: "#/components/schemas/DeliveryWindow"
           readOnly: true
       required:
-      - available_days
-      - business_name
-      - categories
-      - delivery_fee
-      - delivery_windows
-      - id
+        - available_days
+        - business_name
+        - categories
+        - delivery_fee
+        - delivery_windows
+        - id
   securitySchemes:
     cookieAuth:
       type: apiKey

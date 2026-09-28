@@ -108,7 +108,7 @@ class OrderCreateApi(APIView):
             decimal_places=2,
         )
 
-        total_amount_ghs = serializers.DecimalField(
+        total_amount = serializers.DecimalField(
             max_digits=10,
             decimal_places=2,
             source="total",

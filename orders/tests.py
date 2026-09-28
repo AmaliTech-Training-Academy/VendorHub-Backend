@@ -443,7 +443,7 @@ class OrderCreateApiTests(APITestCase):
             **self.payload,
             "subtotal": "999.99",
             "delivery_fee": "0.00",
-            "total_amount_ghs": "1.00",
+            "total_amount": "1.00",
         }
 
         response = self.client.post(
@@ -465,7 +465,7 @@ class OrderCreateApiTests(APITestCase):
         )
 
         self.assertEqual(
-            response.data["total_amount_ghs"],
+            response.data["total_amount"],
             "27.50",
         )
 
