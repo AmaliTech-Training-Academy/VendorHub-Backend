@@ -91,7 +91,7 @@ class ProductDetailApi(APIView):
     class InputSerializer(ProductListCreateApi.InputSerializer):
         pass
 
-    class ProductDetailOutputSerializer(ProductListCreateApi.OutputSerializer):
+    class OutputSerializer(ProductListCreateApi.OutputSerializer):
         pass
 
     def _get_owned_product(self, request, product_id):
@@ -101,7 +101,7 @@ class ProductDetailApi(APIView):
         )
     @extend_schema(
     request=InputSerializer,
-    responses={200: ProductDetailOutputSerializer},
+    responses={200: OutputSerializer},
      )
     def patch(self, request, product_id):
         product = self._get_owned_product(request, product_id)
@@ -123,7 +123,7 @@ class ProductDetailApi(APIView):
             **serializer.validated_data,
         )
 
-        return Response(self.ProductDetailOutputSerializer(product).data)
+        return Response(self.OutputSerializer(product).data)
     @extend_schema(
     responses={204: None},
         )

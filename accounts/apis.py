@@ -12,22 +12,22 @@ from accounts.services import vendor_register, employee_register, user_login
 class VendorRegisterApi(APIView):
     permission_classes = [AllowAny]
 
-    class VendorRegisterInputSerializer(serializers.Serializer):
+    class InputSerializer(serializers.Serializer):
         email = serializers.EmailField(max_length=254)
         password = serializers.CharField(write_only=True, min_length=8, max_length=128)
         business_name = serializers.CharField(max_length=255)
         owner_name = serializers.CharField(max_length=255)
 
-    class VendorRegisterOutputSerializer(serializers.Serializer):
+    class OutputSerializer(serializers.Serializer):
         id = serializers.IntegerField()
         email = serializers.EmailField()
         role = serializers.CharField(max_length=20)
     @extend_schema(
-    request=VendorRegisterInputSerializer,
-    responses={201: VendorRegisterOutputSerializer},
+    request=InputSerializer,
+    responses={201: OutputSerializer},
       )
     def post(self, request):
-        serializer = self.VendorRegisterInputSerializer(data=request.data)
+        serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         try:
@@ -35,27 +35,27 @@ class VendorRegisterApi(APIView):
         except DjangoValidationError as e:
             return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(self.VendorRegisterOutputSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(self.OutputSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
 class EmployeeRegisterApi(APIView):
     permission_classes = [AllowAny]
 
-    class EmployeeRegisterInputSerializer(serializers.Serializer):
+    class InputSerializer(serializers.Serializer):
         email = serializers.EmailField(max_length=254)
         password = serializers.CharField(write_only=True, min_length=8, max_length=128)
         full_name = serializers.CharField(max_length=255)
 
-    class EmployeeRegisterOutputSerializer(serializers.Serializer):
+    class OutputSerializer(serializers.Serializer):
         id = serializers.IntegerField()
         email = serializers.EmailField()
         role = serializers.CharField(max_length=20)
     @extend_schema(
-    request=EmployeeRegisterInputSerializer,
-    responses={201: EmployeeRegisterOutputSerializer},
+    request=InputSerializer,
+    responses={201: OutputSerializer},
       )
     def post(self, request):
-        serializer = self.EmployeeRegisterInputSerializer(data=request.data)
+        serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         try:
@@ -63,28 +63,28 @@ class EmployeeRegisterApi(APIView):
         except DjangoValidationError as e:
             return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(self.EmployeeRegisterOutputSerializer(user).data, status=status.HTTP_201_CREATED)
+        return Response(self.OutputSerializer(user).data, status=status.HTTP_201_CREATED)
 
 
 class LoginApi(APIView):
     permission_classes = [AllowAny]
 
-    class LoginInputSerializer(serializers.Serializer):
+    class InputSerializer(serializers.Serializer):
         email = serializers.EmailField(max_length=254)
         password = serializers.CharField(write_only=True, max_length=128)
 
-    class LoginOutputSerializer(serializers.Serializer):
+    class OutputSerializer(serializers.Serializer):
         access = serializers.CharField()
         refresh = serializers.CharField()
         id = serializers.IntegerField()
         email = serializers.EmailField()
         role = serializers.CharField(max_length=20)
     @extend_schema(
-    request=LoginInputSerializer,
-    responses={200: LoginOutputSerializer},
+    request=InputSerializer,
+    responses={200: OutputSerializer},
        )
     def post(self, request):
-        serializer = self.LoginInputSerializer(data=request.data)
+        serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
         try:

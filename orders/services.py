@@ -137,7 +137,8 @@ def order_create(
 
     delivery_fee = vendor.delivery_fee or Decimal("0.00")
     total_amount = subtotal + delivery_fee
-    if total_amount > Decimal("99999999.99"):
+    maximum_amount = Decimal("99999999.99")
+    if total_amount > maximum_amount:
         raise ValidationError(
             "Order total exceeds the maximum amount."
         )
