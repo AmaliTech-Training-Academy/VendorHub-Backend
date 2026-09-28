@@ -5,10 +5,9 @@ from django.db import models
 
 class Order(models.Model):
     class Status(models.TextChoices):
-        PENDING = 'PENDING', 'Pending'
-        CONFIRMED = 'CONFIRMED', 'Confirmed'
-        DELIVERED = 'DELIVERED', 'Delivered'
-        CANCELLED = 'CANCELLED', 'Cancelled'
+        RECEIVED = 'RECEIVED', 'Received'
+        PREPARING = 'PREPARING', 'Preparing'
+        READY_FOR_COLLECTION = 'READY FOR COLLECTION', 'Ready For Collection'
 
     employee = models.ForeignKey(
         'accounts.EmployeeProfile',
@@ -42,7 +41,7 @@ class Order(models.Model):
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
-        default=Status.PENDING
+        default=Status.RECEIVED
     )
 
     selected_start_time = models.TimeField()

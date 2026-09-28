@@ -1,4 +1,5 @@
 from rest_framework import serializers, status
+from drf_spectacular.utils import extend_schema
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -57,12 +58,19 @@ class ProductListCreateApi(GenericAPIView):
             ]
             read_only_fields = fields
 
+    @extend_schema(
+            responses = OutputSerializer
+    )
     def get(self, request):
         vendor = get_vendor_for_user(request.user)
         page = self.paginate_queryset(products_get(vendor_id=vendor.id))
         serializer = self.OutputSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)
 
+    @extend_schema(
+            request=InputSerializer, 
+            responses={201: OutputSerializer},
+            )
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -83,7 +91,7 @@ class ProductDetailApi(APIView):
     class InputSerializer(ProductListCreateApi.InputSerializer):
         pass
 
-    class OutputSerializer(ProductListCreateApi.OutputSerializer):
+    class ProductDetailOutputSerializer(ProductListCreateApi.OutputSerializer):
         pass
 
     def _get_owned_product(self, request, product_id):
@@ -91,7 +99,10 @@ class ProductDetailApi(APIView):
             user=request.user,
             product_id=product_id,
         )
-
+    @extend_schema(
+    request=InputSerializer,
+    responses={200: ProductDetailOutputSerializer},
+     )
     def patch(self, request, product_id):
         product = self._get_owned_product(request, product_id)
         if product is None:
@@ -112,8 +123,10 @@ class ProductDetailApi(APIView):
             **serializer.validated_data,
         )
 
-        return Response(self.OutputSerializer(product).data)
-
+        return Response(self.ProductDetailOutputSerializer(product).data)
+    @extend_schema(
+    responses={204: None},
+        )
     def delete(self, request, product_id):
         product = self._get_owned_product(request, product_id)
         if product is None:

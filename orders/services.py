@@ -154,7 +154,7 @@ def order_create(
         subtotal=subtotal,
         delivery_fee=delivery_fee,
         total=total_amount,
-        status=Order.Status.PENDING,
+        status=Order.Status.RECEIVED,
     )
 
     for order_item in order_items:
