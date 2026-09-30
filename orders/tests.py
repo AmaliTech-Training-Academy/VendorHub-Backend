@@ -1,4 +1,4 @@
-from datetime import timedelta,time
+from datetime import timedelta, time
 from decimal import Decimal
 from unittest import mock
 
@@ -548,7 +548,6 @@ class OrderCreateApiTests(APITestCase):
             0,
         )
 
-
     def test_delivery_window_already_started_today_is_rejected(self):
         today = timezone.localdate()
         today_name = today.strftime("%A").upper()
@@ -569,3 +568,155 @@ class OrderCreateApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("already started", response.data["detail"])
 
+
+
+class OrderStatusUpdateTests(APITestCase):
+
+    def setUp(self):
+        # Vendor A - owner of the order
+        self.vendor_a_user = AppUser.objects.create_user(
+            email="vendor_a_status@test.com",
+            password="pass12345",
+            role="VENDOR",
+        )
+        self.vendor_a = VendorProfile.objects.create(
+            user=self.vendor_a_user,
+            business_name="Vendor A",
+            owner_name="Owner A",
+            delivery_fee=Decimal("5.00"),
+        )
+
+        # Vendor B - tries to update Vendor A's order
+        self.vendor_b_user = AppUser.objects.create_user(
+            email="vendor_b_status@test.com",
+            password="pass12345",
+            role="VENDOR",
+        )
+        self.vendor_b = VendorProfile.objects.create(
+            user=self.vendor_b_user,
+            business_name="Vendor B",
+            owner_name="Owner B",
+            delivery_fee=Decimal("5.00"),
+        )
+
+        # Employee - the order's customer
+        self.employee_user = AppUser.objects.create_user(
+            email="employee_status@test.com",
+            password="pass12345",
+            role="EMPLOYEE",
+        )
+        self.employee = EmployeeProfile.objects.create(
+            user=self.employee_user,
+            full_name="Employee One",
+        )
+
+        # Delivery window for the order
+        self.window = DeliveryWindow.objects.create(
+            vendor=self.vendor_a,
+            window_name="Lunch",
+            start_time="12:00",
+            end_time="13:00",
+            available_days=["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+        )
+
+        # The order under test - owned by Vendor A
+        self.order = Order.objects.create(
+            employee=self.employee,
+            vendor=self.vendor_a,
+            delivery_window=self.window,
+            delivery_date=timezone.localdate() + timedelta(days=1),
+            order_code="VH-TEST-STATUS-001",
+            selected_window_name="Lunch",
+            selected_start_time="12:00",
+            selected_end_time="13:00",
+            subtotal=Decimal("20.00"),
+            delivery_fee=Decimal("5.00"),
+            total=Decimal("25.00"),
+            status=Order.Status.RECEIVED,
+        )
+
+        self.url = reverse(
+            "orders:order-status-update",
+            kwargs={"order_id": self.order.id},
+        )
+
+    def test_requires_authentication(self):
+        response = self.client.patch(
+            self.url,
+            {"status": "PREPARING"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_owner_can_update_status_to_preparing(self):
+        self.client.force_authenticate(user=self.vendor_a_user)
+
+        response = self.client.patch(
+            self.url,
+            {"status": "PREPARING"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "PREPARING")
+
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "PREPARING")
+
+    def test_owner_can_update_to_ready_for_collection(self):
+        self.client.force_authenticate(user=self.vendor_a_user)
+
+        response = self.client.patch(
+            self.url,
+            {"status": "READY FOR COLLECTION"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["status"], "READY FOR COLLECTION")
+
+    def test_invalid_status_is_rejected(self):
+        self.client.force_authenticate(user=self.vendor_a_user)
+
+        response = self.client.patch(
+            self.url,
+            {"status": "DONE"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.RECEIVED)
+
+    def test_other_vendor_cannot_update_order(self):
+        """IDOR-safe: Vendor B cannot update Vendor A's order."""
+        self.client.force_authenticate(user=self.vendor_b_user)
+
+        response = self.client.patch(
+            self.url,
+            {"status": "PREPARING"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.RECEIVED)
+
+    def test_nonexistent_order_returns_400(self):
+        self.client.force_authenticate(user=self.vendor_a_user)
+
+        url = reverse(
+            "orders:order-status-update",
+            kwargs={"order_id": 999999},
+        )
+
+        response = self.client.patch(
+            url,
+            {"status": "PREPARING"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("not found", response.data["detail"])

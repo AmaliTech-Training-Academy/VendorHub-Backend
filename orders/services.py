@@ -11,6 +11,7 @@ from orders.selectors import (
     active_vendor_get,
     delivery_window_get,
     order_products_get,
+    order_get,
 )
 from vendors.models import Weekday
 
@@ -27,7 +28,6 @@ def _employee_context(*, user):
         return user.employee_profile
     except EmployeeProfile.DoesNotExist:
         raise PermissionDenied("Employee profile is required to place an order.")
-    
 
 
 def _validated_products(*, vendor, items):
@@ -163,4 +163,22 @@ def order_create(
 
     OrderItem.objects.bulk_create(order_items)
 
+    return order
+
+
+@transaction.atomic
+def order_status_update(*, user, order_id, new_status):
+    order = order_get(order_id=order_id)
+
+    if order is None:
+        raise ValidationError("Order not found.")
+
+    if order.vendor.user != user:
+        raise PermissionDenied("You can only update your own orders.")
+
+    if new_status not in Order.Status.values:
+        raise ValidationError("Invalid status.")
+
+    order.status = new_status
+    order.save(update_fields=["status", "updated_at"])
     return order
