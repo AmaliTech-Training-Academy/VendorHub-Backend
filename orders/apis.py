@@ -7,7 +7,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from orders.services import order_create
+from orders.services import order_create, order_status_update
+from orders.models  import Order
 from orders.selectors import order_list_for_user
 
 def _detail_from(exception):
@@ -21,14 +22,17 @@ def _detail_from(exception):
 
     return str(exception) or "Request failed."
 
+
 class OrderItemInputSerializer(serializers.Serializer):
     product_id = serializers.IntegerField(min_value=1)
     quantity = serializers.IntegerField(
         min_value=1,
         max_value=100,
-        )
+    )
+
     class Meta:
         ref_name = "OrderItemInput"
+
 
 class OrderItemOutputSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -202,3 +206,50 @@ class OrderCreateApi(APIView):
             self.OutputSerializer(order).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class OrderStatusUpdateApi(APIView):
+    permission_classes = [IsAuthenticated]
+
+    class InputSerializer(serializers.Serializer):
+        status = serializers.ChoiceField(choices=Order.Status.choices)
+
+        class Meta:
+            ref_name = "OrderStatusUpdateInput"
+
+    class OutputSerializer(serializers.Serializer):
+        id = serializers.IntegerField()
+        status = serializers.CharField()
+        updated_at = serializers.DateTimeField()
+
+        class Meta:
+            ref_name = "OrderStatusUpdateOutput"
+
+    @extend_schema(
+        request=InputSerializer,
+        responses={status.HTTP_200_OK: OutputSerializer},
+    )
+    def patch(self, request, order_id):
+        serializer = self.InputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            order = order_status_update(
+                user=request.user,
+                order_id=order_id,
+                new_status=serializer.validated_data["status"],
+            )
+
+        except DjangoValidationError as exc:
+            return Response(
+                {"detail": _detail_from(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        except DjangoPermissionDenied as exc:
+            return Response(
+                {"detail": _detail_from(exc)},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        return Response(self.OutputSerializer(order).data)
