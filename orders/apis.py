@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from orders.services import order_create
+from orders.selectors import order_list_for_user
 
 def _detail_from(exception):
     if isinstance(exception, DjangoValidationError):
@@ -47,6 +48,41 @@ class OrderItemOutputSerializer(serializers.Serializer):
 
     class Meta:
         ref_name = "OrderItemOutput"
+
+class OrderListOutputSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    order_code = serializers.CharField()
+    employee = serializers.IntegerField(source="employee_id")
+    vendor = serializers.IntegerField(source="vendor_id")
+    vendor_name = serializers.CharField(source="vendor.business_name")
+    delivery_window = serializers.IntegerField(source="delivery_window_id")
+    delivery_date = serializers.DateField()
+    selected_window_name = serializers.CharField()
+    selected_start_time = serializers.TimeField()
+    selected_end_time = serializers.TimeField()
+    items = OrderItemOutputSerializer(
+        many=True,
+        source="order_items",
+    )
+    subtotal = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+    )
+    delivery_fee = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+    )
+    total_amount = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        source="total",
+    )
+    status = serializers.CharField()
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
+
+    class Meta:
+        ref_name = "OrderListOutput"
 
 class OrderCreateApi(APIView):
     permission_classes = [IsAuthenticated]
@@ -120,6 +156,19 @@ class OrderCreateApi(APIView):
 
         class Meta:
             ref_name = "OrderCreateOutput"
+
+    @extend_schema(
+    responses={
+        status.HTTP_200_OK: OrderListOutputSerializer(many=True),
+         },
+      )
+    def get(self, request):
+        orders = order_list_for_user(user=request.user)
+
+        return Response(
+            OrderListOutputSerializer(orders, many=True).data,
+            status=status.HTTP_200_OK,
+        )
 
     @extend_schema(
         request=InputSerializer,

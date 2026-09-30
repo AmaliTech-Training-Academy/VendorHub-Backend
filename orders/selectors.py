@@ -42,3 +42,32 @@ def order_get(*, order_id):
         .filter(id=order_id)
         .first()
     )
+
+def order_list_for_user(*, user):
+    if user.role == "EMPLOYEE":
+        return (
+            Order.objects.select_related(
+                "employee",
+                "vendor",
+                "delivery_window",
+            )
+            .prefetch_related(
+                "order_items__product",
+            )
+            .filter(employee__user=user)
+        )
+
+    if user.role == "VENDOR":
+        return (
+            Order.objects.select_related(
+                "employee",
+                "vendor",
+                "delivery_window",
+            )
+            .prefetch_related(
+                "order_items__product",
+            )
+            .filter(vendor__user=user)
+        )
+
+    return Order.objects.none()
