@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - chore/aws-beanstalk-rds-deploy
+      - main
 
 jobs:
   deploy:
