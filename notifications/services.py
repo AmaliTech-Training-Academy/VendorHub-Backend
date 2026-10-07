@@ -8,55 +8,47 @@ from django.utils.html import strip_tags
 logger = logging.getLogger(__name__)
 
 
-class ResendEmailError(Exception):
-    pass
-
-
-def _from_address():
-    config = settings.RESEND
-    sender_name = config.get("SENDER_NAME", "VendorHub")
-    sender_email = config.get("SENDER_EMAIL", "")
-    return f"{sender_name} <{sender_email}>" if sender_name else sender_email
-
-
 def send_email(*, recipient, subject, template, context):
-    config = settings.RESEND
+    config = settings.BREVO
     if not config.get("API_KEY") or not config.get("SENDER_EMAIL"):
-        logger.warning("Resend email skipped because it is not configured")
+        logger.warning("Brevo email skipped because it is not configured")
         return False
 
     html = render_to_string(template, context)
     payload = {
-        "from": _from_address(),
+        "sender": {
+            "name": config.get("SENDER_NAME", "VendorHub"),
+            "email": config["SENDER_EMAIL"],
+        },
         "to": [recipient],
         "subject": subject,
-        "html": html,
-        "text": strip_tags(html),
+        "htmlContent": html,
+        "textContent": strip_tags(html),
     }
     if config.get("REPLY_TO"):
-        payload["reply_to"] = [config["REPLY_TO"]]
+        payload["replyTo"] = {"email": config["REPLY_TO"]}
 
     try:
         response = requests.post(
             f'{config["API_URL"].rstrip("/")}/emails',
             json=payload,
-            headers={"Authorization": f'Bearer {config["API_KEY"]}'},
+            headers={"api-key": config["API_KEY"]},
             timeout=(3, 10),
         )
         if not response.ok:
             logger.warning(
-                "Resend rejected email (HTTP %s): %s",
+                "Brevo rejected email (HTTP %s): %s",
                 response.status_code,
                 response.text[:500],
             )
             return False
-        data = response.json()
+        data = response.json() if response.content else {}
     except (requests.RequestException, ValueError):
-        logger.exception("Resend email delivery failed for %s", recipient)
+        logger.exception("Brevo email delivery failed for %s", recipient)
         return False
 
-    if not data.get("id"):
-        logger.error("Resend returned a response without an email id")
+    if not isinstance(data, dict):
+        logger.error("Brevo returned an invalid email response")
         return False
     return True
 

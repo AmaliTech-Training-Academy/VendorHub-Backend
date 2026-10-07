@@ -192,10 +192,10 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
 }
 
-RESEND = {
-    "API_KEY": env("RESEND_API_KEY", default=""),
-    "API_URL": env("RESEND_API_URL", default="https://api.resend.com"),
-    "SENDER_EMAIL": env("RESEND_SENDER_EMAIL", default=""),
-    "SENDER_NAME": env("RESEND_SENDER_NAME", default="VendorHub"),
-    "REPLY_TO": env("RESEND_REPLY_TO", default=""),
+BREVO = {
+    "API_KEY": env("BREVO_API_KEY", default=""),
+    "API_URL": env("BREVO_API_URL", default="https://api.brevo.com/v3"),
+    "SENDER_EMAIL": env("BREVO_SENDER_EMAIL", default=""),
+    "SENDER_NAME": env("BREVO_SENDER_NAME", default="VendorHub"),
+    "REPLY_TO": env("BREVO_REPLY_TO", default=""),
 }
