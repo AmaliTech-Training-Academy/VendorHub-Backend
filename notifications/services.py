@@ -20,7 +20,7 @@ def send_email(*, recipient, subject, template, context):
             "name": config.get("SENDER_NAME", "VendorHub"),
             "email": config["SENDER_EMAIL"],
         },
-        "to": [recipient],
+        "to": [{"email": recipient}],
         "subject": subject,
         "htmlContent": html,
         "textContent": strip_tags(html),
@@ -30,7 +30,7 @@ def send_email(*, recipient, subject, template, context):
 
     try:
         response = requests.post(
-            f'{config["API_URL"].rstrip("/")}/emails',
+            f'{config["API_URL"].rstrip("/")}/smtp/email',
             json=payload,
             headers={"api-key": config["API_KEY"]},
             timeout=(3, 10),
