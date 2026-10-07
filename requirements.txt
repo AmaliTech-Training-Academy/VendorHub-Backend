@@ -9,10 +9,12 @@ django-storages==1.14.6
 djangorestframework==3.18.1
 djangorestframework-simplejwt==5.5.1
 drf-spectacular==0.30.0
+gunicorn==23.0.0
 inflection==0.5.1
 jmespath==1.1.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
+packaging==26.3
 pillow==12.3.0
 psycopg==3.3.5
 psycopg-binary==3.3.5
@@ -28,3 +30,4 @@ sqlparse==0.6.0
 tzdata==2026.4
 uritemplate==4.2.0
 urllib3==2.8.0
+whitenoise==6.11.0

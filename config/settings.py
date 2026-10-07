@@ -32,10 +32,10 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 DEBUG = env("DJANGO_DEBUG")
 
-ALLOWED_HOSTS = [
-    "127.0.0.1",
-    "localhost",
-]
+ALLOWED_HOSTS = env.list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=["127.0.0.1", "localhost"],
+)
 
 
 # Application definition
@@ -60,6 +60,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -138,12 +139,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 STORAGES = {
     "default": {
         "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
 
@@ -154,7 +156,8 @@ MEDIA_ROOT = BASE_DIR / "media"
 AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="")
 
 if AWS_STORAGE_BUCKET_NAME:
-    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME")
+    # Defaults to the bucket's region, so a missing setting can't stop the server from starting.
+    AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="eu-west-1")
     # No keys here on purpose: boto3 reads AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY from the environment locally,
     # and uses the server's IAM role on Elastic Beanstalk.
     STORAGES["default"] = {
@@ -180,11 +183,20 @@ if AWS_STORAGE_BUCKET_NAME:
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
+CORS_ALLOWED_ORIGINS = env.list(
+    "CORS_ALLOWED_ORIGINS",
+    default=["http://localhost:3000", "http://127.0.0.1:3000"],
+)
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 AUTH_USER_MODEL = 'accounts.AppUser'
+
+if not DEBUG:
+    # EB's load balancer terminates TLS and talks to the app over plain HTTP,
+    # so Django needs this header to know the original request was HTTPS.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
