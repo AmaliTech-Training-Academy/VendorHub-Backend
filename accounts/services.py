@@ -14,7 +14,15 @@ def vendor_register(*, email: str, password: str, business_name: str, owner_name
     validate_password(password)
 
     user = AppUser.objects.create_user(email=email, password=password, role="VENDOR")
-    VendorProfile.objects.create(user=user, business_name=business_name, owner_name=owner_name)
+    vendor = VendorProfile.objects.create(
+        user=user,
+        business_name=business_name,
+        owner_name=owner_name,
+        verification_status=VendorProfile.VerificationStatus.PENDING,
+        is_active=False,
+    )
+    from notifications.services import send_vendor_pending
+    transaction.on_commit(lambda: send_vendor_pending(vendor))
     return user
 
 

@@ -1,0 +1,10 @@
+<!doctype html>
+<html>
+  <body>
+    <p>Hello {{ vendor_name }},</p>
+    <p>Your VendorHub account for <strong>{{ business_name }}</strong> was declined.</p>
+    {% if reason %}<p>Reason: {{ reason }}</p>{% endif %}
+    <p>Please contact us if you believe this decision needs to be reviewed.</p>
+    <p>Regards,<br>VendorHub</p>
+  </body>
+</html>
