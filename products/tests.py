@@ -35,6 +35,8 @@ class ProductApiTests(TestCase):
             user=self.vendor_user,
             business_name="Demo Store",
             owner_name="Demo Owner",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            is_active=True,
         )
         self.other_vendor_user = AppUser.objects.create_user(
             email="other-vendor@example.com",
@@ -45,6 +47,8 @@ class ProductApiTests(TestCase):
             user=self.other_vendor_user,
             business_name="Other Store",
             owner_name="Other Owner",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            is_active=True,
         )
         self.employee_user = AppUser.objects.create_user(
             email="employee@example.com",
@@ -156,6 +160,43 @@ class ProductApiTests(TestCase):
 
         list_response = self.client.get(self.collection_url)
         self.assertEqual(list_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_pending_vendor_cannot_manage_or_list_products(self):
+        pending_user = AppUser.objects.create_user(
+            email="pending-vendor@example.com",
+            password="StrongPass123!",
+            role="VENDOR",
+        )
+        VendorProfile.objects.create(
+            user=pending_user,
+            business_name="Pending Shop",
+            owner_name="Pending Owner",
+        )
+        self.authenticate_as(pending_user)
+
+        self.assertEqual(
+            self.client.get(self.collection_url).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_declined_vendor_cannot_manage_or_list_products(self):
+        declined_user = AppUser.objects.create_user(
+            email="declined-vendor@example.com",
+            password="StrongPass123!",
+            role="VENDOR",
+        )
+        VendorProfile.objects.create(
+            user=declined_user,
+            business_name="Declined Shop",
+            owner_name="Declined Owner",
+            verification_status=VendorProfile.VerificationStatus.DECLINED,
+        )
+        self.authenticate_as(declined_user)
+
+        self.assertEqual(
+            self.client.get(self.collection_url).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
 
     def test_product_price_constraint_rejects_direct_invalid_write(self):
         from django.db import IntegrityError

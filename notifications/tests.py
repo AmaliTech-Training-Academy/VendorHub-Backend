@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase
 
 from accounts.models import VendorProfile
@@ -25,7 +26,11 @@ class VendorEmailTests(TestCase):
             recipient="vendor@example.com",
             subject="Your VendorHub account is pending verification",
             template="notifications/vendor_pending.html",
-            context={"vendor_name": "Test Owner", "business_name": "Test Shop"},
+            context={
+                "vendor_name": "Test Owner",
+                "business_name": "Test Shop",
+                "support_email": settings.BREVO["SUPPORT_EMAIL"],
+            },
         )
 
     @patch("notifications.services.send_email", return_value=True)
@@ -37,7 +42,11 @@ class VendorEmailTests(TestCase):
             recipient="vendor@example.com",
             subject="Your VendorHub account has been approved",
             template="notifications/vendor_approved.html",
-            context={"vendor_name": "Test Owner", "business_name": "Test Shop"},
+            context={
+                "vendor_name": "Test Owner",
+                "business_name": "Test Shop",
+                "support_email": settings.BREVO["SUPPORT_EMAIL"],
+            },
         )
 
     @patch("notifications.services.send_email", return_value=True)

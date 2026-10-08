@@ -25,9 +25,6 @@ def send_email(*, recipient, subject, template, context):
         "htmlContent": html,
         "textContent": strip_tags(html),
     }
-    if config.get("REPLY_TO"):
-        payload["replyTo"] = {"email": config["REPLY_TO"]}
-
     try:
         response = requests.post(
             f'{config["API_URL"].rstrip("/")}/smtp/email',
@@ -57,6 +54,7 @@ def _vendor_context(vendor):
     return {
         "vendor_name": vendor.owner_name,
         "business_name": vendor.business_name,
+        "support_email": settings.BREVO["SUPPORT_EMAIL"],
     }
 
 

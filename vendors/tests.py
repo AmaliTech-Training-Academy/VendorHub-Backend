@@ -28,6 +28,8 @@ class VendorStorefrontTests(APITestCase):
             business_name="Mama's Kitchen",
             owner_name="Mama",
             delivery_fee="10.00",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            is_active=True,
         )
 
         self.inactive_user = AppUser.objects.create_user(
@@ -200,6 +202,8 @@ class MyDeliverySettingsTests(APITestCase):
             business_name="Mama's Kitchen",
             owner_name="Mama",
             delivery_fee="10.00",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            is_active=True,
         )
 
         self.other_vendor_user = AppUser.objects.create_user(
@@ -212,6 +216,8 @@ class MyDeliverySettingsTests(APITestCase):
             business_name="Other Shop",
             owner_name="Other",
             delivery_fee="3.00",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            is_active=True,
         )
 
         self.employee_user = AppUser.objects.create_user(

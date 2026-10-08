@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -64,6 +64,22 @@ class EmployeeRegisterApi(APIView):
             return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(self.OutputSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class CurrentUserApi(APIView):
+    permission_classes = [IsAuthenticated]
+
+    class OutputSerializer(serializers.Serializer):
+        role = serializers.CharField()
+        verification_status = serializers.SerializerMethodField()
+
+        def get_verification_status(self, user):
+            vendor = getattr(user, "vendor_profile", None)
+            return vendor.verification_status if vendor else None
+
+    @extend_schema(responses=OutputSerializer)
+    def get(self, request):
+        return Response(self.OutputSerializer(request.user).data)
 
 
 class LoginApi(APIView):

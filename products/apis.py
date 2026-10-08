@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from .models import Product
 from .pagination import ProductPagination
-from .permissions import IsVendor
+from .permissions import IsApprovedVendor
 from .selectors import products_get
 from .services import (
     get_owned_product,
@@ -19,7 +19,7 @@ from .services import (
 
 
 class ProductListCreateApi(GenericAPIView):
-    permission_classes = [IsAuthenticated, IsVendor]
+    permission_classes = [IsAuthenticated, IsApprovedVendor]
     pagination_class = ProductPagination
 
     class InputSerializer(serializers.ModelSerializer):
@@ -86,7 +86,7 @@ class ProductListCreateApi(GenericAPIView):
 
 
 class ProductDetailApi(APIView):
-    permission_classes = [IsAuthenticated, IsVendor]
+    permission_classes = [IsAuthenticated, IsApprovedVendor]
 
     class InputSerializer(ProductListCreateApi.InputSerializer):
         pass
