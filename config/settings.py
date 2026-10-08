@@ -197,5 +197,5 @@ BREVO = {
     "API_URL": env("BREVO_API_URL", default="https://api.brevo.com/v3"),
     "SENDER_EMAIL": env("BREVO_SENDER_EMAIL", default=""),
     "SENDER_NAME": env("BREVO_SENDER_NAME", default="VendorHub"),
-    "SUPPORT_EMAIL": env("BREVO_SUPPORT_EMAIL", default="support@vendorhub.com"),
+    "SUPPORT_EMAIL": env("BREVO_SUPPORT_EMAIL", default=""),
 }

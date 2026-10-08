@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.contrib import admin
 from django.test import RequestFactory
+from unittest.mock import MagicMock
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -272,6 +273,7 @@ class PasswordSecurityTests(APITestCase):
 class VendorAdminVerificationTests(TestCase):
     def setUp(self):
         self.request = RequestFactory().get("/admin/accounts/vendorprofile/")
+        self.request._messages = MagicMock()
         self.admin = admin.site._registry[VendorProfile].__class__(
             VendorProfile, admin.site
         )

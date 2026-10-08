@@ -21,6 +21,7 @@ class Migration(migrations.Migration):
                     ("APPROVED", "Approved"),
                     ("DECLINED", "Declined"),
                 ],
+                # Existing vendors were active before verification existed, so preserve access.
                 default="APPROVED",
                 max_length=10,
             ),

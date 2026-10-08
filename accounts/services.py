@@ -22,7 +22,7 @@ def vendor_register(*, email: str, password: str, business_name: str, owner_name
         is_active=False,
     )
     from notifications.services import send_vendor_pending
-    transaction.on_commit(lambda: send_vendor_pending(vendor))
+    transaction.on_commit(lambda: send_vendor_pending(vendor), robust=True)
     return user
 
 

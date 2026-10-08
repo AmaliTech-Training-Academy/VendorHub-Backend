@@ -71,6 +71,43 @@ class VendorEmailTests(TestCase):
 
         send_approved.assert_called_once_with(vendor)
 
+    @patch("notifications.services.send_vendor_declined", return_value=True)
+    def test_decline_status_change_sends_email_automatically(self, send_declined):
+        vendor = self._create_vendor()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            vendor.verification_status = VendorProfile.VerificationStatus.DECLINED
+            vendor.is_active = False
+            vendor.save(update_fields=["verification_status", "is_active", "updated_at"])
+
+        send_declined.assert_called_once_with(vendor)
+
+    @patch("notifications.services.send_vendor_approved", return_value=True)
+    @patch("notifications.services.send_vendor_declined", return_value=True)
+    def test_unchanged_status_does_not_send_email(self, send_declined, send_approved):
+        vendor = self._create_vendor()
+
+        with self.captureOnCommitCallbacks(execute=True):
+            vendor.owner_name = "Updated Owner"
+            vendor.save(update_fields=["owner_name", "updated_at"])
+
+        send_approved.assert_not_called()
+        send_declined.assert_not_called()
+
+    @patch("notifications.services.send_email", side_effect=RuntimeError("Brevo unavailable"))
+    def test_provider_failure_does_not_break_registration(self, send_email):
+        with self.captureOnCommitCallbacks(execute=True):
+            user = vendor_register(
+                email="provider-failure@example.com",
+                password="StrongPass123!",
+                business_name="Test Shop",
+                owner_name="Test Owner",
+            )
+
+        self.assertTrue(user.pk)
+        self.assertTrue(VendorProfile.objects.filter(user=user).exists())
+        send_email.assert_called_once()
+
     @staticmethod
     def _create_vendor():
         user = vendor_register(

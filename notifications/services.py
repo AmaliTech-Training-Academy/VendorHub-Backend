@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 def send_email(*, recipient, subject, template, context):
     config = settings.BREVO
     if not config.get("API_KEY") or not config.get("SENDER_EMAIL"):
-        logger.warning("Brevo email skipped because it is not configured")
+        logger.error("Brevo email skipped because API key or sender email is missing")
         return False
 
     html = render_to_string(template, context)
