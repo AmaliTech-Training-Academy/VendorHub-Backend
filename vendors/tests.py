@@ -1,19 +1,29 @@
 import datetime
+import io
+import os
+import shutil
+import tempfile
+from unittest import mock
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files.storage import FileSystemStorage
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, connection
+from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
+from PIL import Image
 from rest_framework import status
 from rest_framework.test import APITestCase
 
 from accounts.models import AppUser, VendorProfile
 from products.models import Product
 
-from .models import DeliveryWindow
+from .models import DeliveryWindow, VendorStorefront
 from .selectors import vendor_product_list
-from .services import delivery_settings_update
+from .services import delivery_settings_update, storefront_update
 
 
 class VendorStorefrontTests(APITestCase):
@@ -142,6 +152,31 @@ class VendorStorefrontTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["name"], "Jollof")
+
+    @override_settings(
+        STORAGES={
+            **settings.STORAGES,
+            "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        },
+    )
+    def test_products_include_image_url(self):
+        Product.objects.create(
+            vendor=self.active_vendor,
+            name="Jollof",
+            price="20.00",
+            image=f"products/{self.active_vendor.id}/jollof.png",
+        )
+        Product.objects.create(vendor=self.active_vendor, name="Waakye", price="15.00")
+        self.client.force_authenticate(user=self.active_user)
+
+        results = self.get_products(self.active_vendor.id).data["results"]
+        images = {product["name"]: product["image"] for product in results}
+
+        self.assertEqual(
+            images["Jollof"],
+            f"http://testserver/media/products/{self.active_vendor.id}/jollof.png",
+        )
+        self.assertIsNone(images["Waakye"])
 
     def test_products_of_inactive_vendor_not_found(self):
         Product.objects.create(vendor=self.inactive_vendor, name="Hidden", price="20.00")
@@ -565,4 +600,302 @@ class MyDeliverySettingsTests(APITestCase):
         self.assertTrue(morning.is_active)
         self.assertFalse(DeliveryWindow.objects.get(id=afternoon_id).is_active)
         self.assertEqual(DeliveryWindow.objects.filter(vendor=self.vendor).count(), 3)
+
+
+def make_image(name="logo.png", size=(10, 10), noise=False):
+    if noise:
+        image = Image.frombytes("RGB", size, os.urandom(size[0] * size[1] * 3))
+    else:
+        image = Image.new("RGB", size, "red")
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG")
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/png")
+
+
+class MyStorefrontTests(APITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.media_root = tempfile.mkdtemp()
+        cls.media_override = override_settings(
+            MEDIA_ROOT=cls.media_root,
+            STORAGES={
+                **settings.STORAGES,
+                "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+            },
+        )
+        cls.media_override.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.media_override.disable()
+        shutil.rmtree(cls.media_root, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        self.vendor_user = AppUser.objects.create_user(
+            email="vendor@storefront.com",
+            password="StrongPass123!",
+            role="VENDOR",
+        )
+        self.vendor = VendorProfile.objects.create(
+            user=self.vendor_user,
+            business_name="Mama's Kitchen",
+            owner_name="Mama",
+        )
+
+        self.other_vendor_user = AppUser.objects.create_user(
+            email="other@storefront.com",
+            password="StrongPass123!",
+            role="VENDOR",
+        )
+        self.other_vendor = VendorProfile.objects.create(
+            user=self.other_vendor_user,
+            business_name="Other Shop",
+            owner_name="Other",
+        )
+
+        self.employee_user = AppUser.objects.create_user(
+            email="employee@storefront.com",
+            password="StrongPass123!",
+            role="EMPLOYEE",
+        )
+
+        self.url = reverse("vendors:my-storefront")
+        self.list_url = reverse("vendors:vendor-list")
+
+    def patch(self, data, user=None, format="json"):
+        self.client.force_authenticate(user=user or self.vendor_user)
+        return self.client.patch(self.url, data, format=format)
+
+    def upload_logo(self, image=None, user=None):
+        return self.patch({"logo": image or make_image()}, user=user, format="multipart")
+
+    def storefront_vendor(self, vendor):
+        self.client.force_authenticate(user=self.employee_user)
+        results = self.client.get(self.list_url).data["results"]
+        return next(v for v in results if v["id"] == vendor.id)
+
+    def logo_path(self, vendor):
+        return VendorStorefront.objects.get(vendor=vendor).logo.path
+
+
+    def test_url_has_no_vendor_id(self):
+        self.assertEqual(self.url, "/api/vendors/me/storefront/")
+
+    def test_requires_authentication(self):
+        get_response = self.client.get(self.url)
+        patch_response = self.client.patch(self.url, {"slogan": "Hi"}, format="json")
+
+        self.assertEqual(get_response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(patch_response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_employee_cannot_read_or_change_storefront(self):
+        self.client.force_authenticate(user=self.employee_user)
+
+        get_response = self.client.get(self.url)
+        patch_response = self.client.patch(self.url, {"slogan": "Hi"}, format="json")
+
+        self.assertEqual(get_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(patch_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(patch_response.data, {"detail": "Only vendors can manage their storefront."})
+        self.assertFalse(VendorStorefront.objects.exists())
+
+    def test_inactive_vendor_cannot_read_or_change_storefront(self):
+        self.vendor.is_active = False
+        self.vendor.save(update_fields=["is_active"])
+        self.client.force_authenticate(user=self.vendor_user)
+
+        get_response = self.client.get(self.url)
+        patch_response = self.client.patch(self.url, {"slogan": "Hi"}, format="json")
+
+        self.assertEqual(get_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(patch_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(VendorStorefront.objects.exists())
+
+    def test_each_vendor_only_changes_their_own_storefront(self):
+        self.patch({"slogan": "Mine"}, user=self.other_vendor_user)
+
+        self.assertEqual(VendorStorefront.objects.get(vendor=self.other_vendor).slogan, "Mine")
+        self.assertFalse(VendorStorefront.objects.filter(vendor=self.vendor).exists())
+
+
+    def test_new_vendor_gets_blank_storefront(self):
+        self.client.force_authenticate(user=self.vendor_user)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {"logo": None, "slogan": "", "phone_number": "", "address": ""})
+        self.assertFalse(VendorStorefront.objects.exists())
+
+    def test_vendor_can_save_text_details(self):
+        data = {"slogan": "Home-cooked, fast.", "phone_number": "+233244123456", "address": "12 Ring Rd, Accra"}
+
+        response = self.patch(data)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {"logo": None, **data})
+        self.client.force_authenticate(user=self.vendor_user)
+        self.assertEqual(self.client.get(self.url).data, {"logo": None, **data})
+
+    def test_patch_only_changes_fields_that_were_sent(self):
+        self.patch({"slogan": "Home-cooked", "phone_number": "0244123456", "address": "12 Ring Rd"})
+
+        response = self.patch({"phone_number": "0209998888"})
+
+        self.assertEqual(response.data["phone_number"], "0209998888")
+        self.assertEqual(response.data["slogan"], "Home-cooked")
+        self.assertEqual(response.data["address"], "12 Ring Rd")
+
+    def test_text_fields_can_be_cleared(self):
+        self.patch({"slogan": "Home-cooked", "phone_number": "0244123456"})
+
+        response = self.patch({"slogan": "", "phone_number": ""})
+
+        self.assertEqual(response.data["slogan"], "")
+        self.assertEqual(response.data["phone_number"], "")
+
+    def test_rejects_invalid_phone_number(self):
+        for phone in ["abc1234567", "12345", "+233 24 412 3456", "0" * 16]:
+            with self.subTest(phone=phone):
+                response = self.patch({"phone_number": phone})
+
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(VendorStorefront.objects.exclude(phone_number="").exists())
+
+    def test_rejects_too_long_text(self):
+        response = self.patch({"slogan": "x" * 151})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_vendor_and_profile_cannot_be_changed_through_storefront(self):
+        self.patch({"slogan": "Hi", "vendor": self.other_vendor.id, "business_name": "Hacked"})
+
+        self.vendor.refresh_from_db()
+        self.assertEqual(self.vendor.business_name, "Mama's Kitchen")
+        self.assertEqual(VendorStorefront.objects.get(slogan="Hi").vendor, self.vendor)
+
+
+    def test_vendor_can_upload_logo(self):
+        response = self.upload_logo()
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        logo = VendorStorefront.objects.get(vendor=self.vendor).logo
+        self.assertTrue(logo.name.startswith(f"vendors/{self.vendor.id}/logo/"))
+        self.assertTrue(logo.name.endswith(".png"))
+        self.assertTrue(os.path.exists(logo.path))
+        self.assertEqual(response.data["logo"], f"http://testserver/media/{logo.name}")
+
+    def test_logo_and_text_can_be_sent_together(self):
+        response = self.patch({"logo": make_image(), "slogan": "Fresh daily"}, format="multipart")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNotNone(response.data["logo"])
+        self.assertEqual(response.data["slogan"], "Fresh daily")
+
+    def test_text_update_keeps_existing_logo(self):
+        logo_url = self.upload_logo().data["logo"]
+
+        response = self.patch({"slogan": "New slogan"})
+
+        self.assertEqual(response.data["logo"], logo_url)
+
+    def test_replacing_logo_deletes_old_file(self):
+        self.upload_logo()
+        old_path = self.logo_path(self.vendor)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            self.upload_logo(make_image("new.png"))
+
+        self.assertFalse(os.path.exists(old_path))
+        self.assertTrue(os.path.exists(self.logo_path(self.vendor)))
+
+    def test_vendor_can_remove_logo(self):
+        self.upload_logo()
+        old_path = self.logo_path(self.vendor)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.patch({"logo": None})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["logo"])
+        self.assertFalse(os.path.exists(old_path))
+
+    def test_text_update_works_when_saved_logo_cannot_be_read(self):
+        self.upload_logo()
+
+        with mock.patch.object(FileSystemStorage, "size", side_effect=FileNotFoundError):
+            response = self.patch({"slogan": "Still works"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(VendorStorefront.objects.get(vendor=self.vendor).slogan, "Still works")
+
+    def test_failed_old_logo_cleanup_still_returns_success(self):
+        self.upload_logo()
+
+        with (
+            mock.patch.object(FileSystemStorage, "delete", side_effect=OSError("storage down")),
+            self.assertLogs("vendors.services", level="ERROR") as logs,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            response = self.patch({"logo": None, "slogan": "Fresh"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        storefront = VendorStorefront.objects.get(vendor=self.vendor)
+        self.assertFalse(storefront.logo)
+        self.assertEqual(storefront.slogan, "Fresh")
+        self.assertIn("Could not delete old storefront logo", logs.output[0])
+
+    def test_rejects_file_that_is_not_an_image(self):
+        fake = SimpleUploadedFile("logo.png", b"not really an image", content_type="image/png")
+
+        response = self.upload_logo(fake)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(VendorStorefront.objects.exists())
+
+    def test_rejects_logo_over_size_limit(self):
+        response = self.upload_logo(make_image(size=(1000, 1000), noise=True))
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data, {"detail": "Logo must be 2 MB or smaller."})
+        self.assertFalse(VendorStorefront.objects.exclude(logo="").exists())
+
+    def test_service_validates_before_saving(self):
+        with self.assertRaises(ValidationError):
+            storefront_update(user=self.vendor_user, phone_number="not a phone")
+
+        self.assertFalse(VendorStorefront.objects.exclude(phone_number="").exists())
+
+
+    def test_storefront_list_shows_vendor_details(self):
+        self.patch({"logo": make_image(), "slogan": "Home-cooked", "phone_number": "0244123456"}, format="multipart")
+
+        storefront = self.storefront_vendor(self.vendor)["storefront"]
+
+        self.assertTrue(storefront["logo"].startswith("http://testserver/media/vendors/"))
+        self.assertEqual(storefront["slogan"], "Home-cooked")
+        self.assertEqual(storefront["phone_number"], "0244123456")
+        self.assertEqual(storefront["address"], "")
+
+    def test_storefront_list_shows_blank_details_for_vendor_without_storefront(self):
+        storefront = self.storefront_vendor(self.other_vendor)["storefront"]
+
+        self.assertEqual(storefront, {"logo": None, "slogan": "", "phone_number": "", "address": ""})
+
+    def test_storefront_list_does_not_query_per_vendor(self):
+        self.patch({"slogan": "First"})
+        self.client.force_authenticate(user=self.employee_user)
+        with CaptureQueriesContext(connection) as two_vendors:
+            self.client.get(self.list_url)
+
+        for i in range(5):
+            user = AppUser.objects.create_user(email=f"extra{i}@storefront.com", password="StrongPass123!", role="VENDOR")
+            extra = VendorProfile.objects.create(user=user, business_name=f"Extra {i}", owner_name="Extra")
+            VendorStorefront.objects.create(vendor=extra, slogan=f"Slogan {i}")
+        with CaptureQueriesContext(connection) as seven_vendors:
+            self.client.get(self.list_url)
+
+        self.assertEqual(len(seven_vendors), len(two_vendors))
 

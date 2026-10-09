@@ -9,18 +9,19 @@ from rest_framework.views import APIView
 from accounts.models import VendorProfile
 from products.models import Product
 
-from .models import DeliveryWindow, Weekday
+from .models import MAX_LOGO_SIZE_MB, DeliveryWindow, VendorStorefront, Weekday
 from .pagination import VendorPagination
-from .permissions import IsVendorAccount
+from .permissions import IsStorefrontVendor, IsVendorAccount
 from .selectors import (
     vendor_available_days,
     vendor_categories,
     vendor_get,
     vendor_get_for_user,
     vendor_product_list,
+    vendor_storefront,
     vendor_storefront_list,
 )
-from .services import delivery_settings_update
+from .services import delivery_settings_update, storefront_update
 
 AVAILABLE_DAYS_SCHEMA = serializers.ListField(child=serializers.ChoiceField(choices=Weekday.choices))
 CATEGORIES_SCHEMA = serializers.ListField(child=serializers.CharField())
@@ -43,6 +44,18 @@ class DeliveryWindowOutputSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class StorefrontOutputSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VendorStorefront
+        ref_name = "StorefrontDetails"
+        fields = [
+            "logo",
+            "slogan",
+            "phone_number",
+            "address",
+        ]
+        read_only_fields = fields
+
 class VendorListApi(GenericAPIView):
     permission_classes = [IsAuthenticated]
     pagination_class = VendorPagination
@@ -55,6 +68,7 @@ class VendorListApi(GenericAPIView):
             source="active_delivery_windows",
             read_only=True,
         )
+        storefront = serializers.SerializerMethodField()
 
         class Meta:
             model = VendorProfile
@@ -66,6 +80,7 @@ class VendorListApi(GenericAPIView):
                 "delivery_fee",
                 "available_days",
                 "delivery_windows",
+                "storefront",
             ]
             read_only_fields = fields
 
@@ -77,6 +92,10 @@ class VendorListApi(GenericAPIView):
         def get_available_days(self, vendor):
             return vendor_available_days(vendor=vendor)
 
+        @extend_schema_field(StorefrontOutputSerializer)
+        def get_storefront(self, vendor):
+            return StorefrontOutputSerializer(vendor_storefront(vendor=vendor), context=self.context).data
+
     @extend_schema(
         summary="List Active Vendors",
         tags=["Vendor Storefront"],
@@ -84,7 +103,7 @@ class VendorListApi(GenericAPIView):
     )
     def get(self, request):
         page = self.paginate_queryset(vendor_storefront_list())
-        serializer = self.OutputSerializer(page, many=True)
+        serializer = self.OutputSerializer(page, many=True, context=self.get_serializer_context())
         return self.get_paginated_response(serializer.data)
 
 
@@ -105,6 +124,7 @@ class VendorProductListApi(GenericAPIView):
                 "description",
                 "category",
                 "price",
+                "image",
                 "in_stock",
             ]
             read_only_fields = fields
@@ -127,7 +147,7 @@ class VendorProductListApi(GenericAPIView):
             )
 
         page = self.paginate_queryset(vendor_product_list(vendor_id=vendor.id))
-        serializer = self.OutputSerializer(page, many=True)
+        serializer = self.OutputSerializer(page, many=True, context={"request": request})
         return self.get_paginated_response(serializer.data)
 
 
@@ -229,5 +249,75 @@ class MyDeliverySettingsApi(APIView):
     def inactive_vendor_response():
         return Response(
             {"detail": "Inactive vendors cannot manage delivery settings."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+
+class MyStorefrontApi(APIView):
+    permission_classes = [IsAuthenticated, IsStorefrontVendor]
+
+    class InputSerializer(serializers.Serializer):
+        logo = serializers.ImageField(
+            required=False,
+            allow_null=True,
+            help_text=f"Image file (PNG, JPG, GIF or WebP), max {MAX_LOGO_SIZE_MB} MB. Send null to remove the logo.",
+        )
+        slogan = serializers.CharField(max_length=150, required=False, allow_blank=True)
+        phone_number = serializers.CharField(
+            max_length=16,
+            required=False,
+            allow_blank=True,
+            help_text="7-15 digits, optionally starting with + (so at most 16 characters), no spaces, e.g. +233244123456.",
+        )
+        address = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+        class Meta:
+            ref_name = "StorefrontInput"
+
+    @extend_schema(
+        summary="Get My Storefront",
+        tags=["Vendor Storefront Details"],
+        responses=StorefrontOutputSerializer,
+    )
+    def get(self, request):
+        vendor = vendor_get_for_user(user=request.user)
+        if vendor is None:
+            return self.inactive_vendor_response()
+
+        return Response(StorefrontOutputSerializer(vendor_storefront(vendor=vendor), context={"request": request}).data)
+
+    @extend_schema(
+        summary="Update My Storefront",
+        description=(
+            "Send as multipart/form-data when uploading a logo; JSON works for the text fields. "
+            "Every field is optional: only the fields you send are changed.\n\n"
+            f"- **logo**: image file (PNG, JPG, GIF or WebP), max {MAX_LOGO_SIZE_MB} MB. Send null to remove it.\n"
+            "- **slogan**: max 150 characters.\n"
+            "- **phone_number**: 7-15 digits, optionally starting with + (so at most 16 characters), no spaces, e.g. +233244123456.\n"
+            "- **address**: max 255 characters.\n\n"
+            'Errors return 400, e.g. `{"detail": "Logo must be 2 MB or smaller."}`.'
+        ),
+        tags=["Vendor Storefront Details"],
+        request={"multipart/form-data": InputSerializer, "application/json": InputSerializer},
+        responses=StorefrontOutputSerializer,
+    )
+    def patch(self, request):
+        if vendor_get_for_user(user=request.user) is None:
+            return self.inactive_vendor_response()
+
+        serializer = self.InputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            storefront = storefront_update(user=request.user, **serializer.validated_data)
+        except DjangoValidationError as e:
+            return Response({"detail": e.messages[0]}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(StorefrontOutputSerializer(storefront, context={"request": request}).data)
+
+    @staticmethod
+    def inactive_vendor_response():
+        return Response(
+            {"detail": "Inactive vendors cannot manage their storefront."},
             status=status.HTTP_403_FORBIDDEN,
         )

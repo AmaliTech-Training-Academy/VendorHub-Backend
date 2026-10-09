@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Product
+from .models import MAX_IMAGE_SIZE_MB, Product
 from .pagination import ProductPagination
 from .permissions import IsVendor
 from .selectors import products_get
@@ -25,13 +25,24 @@ class ProductListCreateApi(GenericAPIView):
     class InputSerializer(serializers.ModelSerializer):
         class Meta:
             model = Product
+            ref_name = "ProductInput"
             fields = [
                 "name",
                 "price",
                 "description",
                 "category",
+                "image",
                 "in_stock",
             ]
+            extra_kwargs = {
+                "image": {
+                    "allow_null": True,
+                    "help_text": (
+                        f"Image file (PNG, JPG, GIF or WebP), max {MAX_IMAGE_SIZE_MB} MB. "
+                        "Send null to remove the image."
+                    ),
+                },
+            }
 
         def validate_price(self, value):
             if value <= 0:
@@ -44,6 +55,7 @@ class ProductListCreateApi(GenericAPIView):
     class OutputSerializer(serializers.ModelSerializer):
         class Meta:
             model = Product
+            ref_name = "Product"
             fields = [
                 "id",
                 "vendor",
@@ -51,6 +63,7 @@ class ProductListCreateApi(GenericAPIView):
                 "price",
                 "description",
                 "category",
+                "image",
                 "in_stock",
                 "created_at",
                 "updated_at",
@@ -64,11 +77,12 @@ class ProductListCreateApi(GenericAPIView):
     def get(self, request):
         vendor = get_vendor_for_user(request.user)
         page = self.paginate_queryset(products_get(vendor_id=vendor.id))
-        serializer = self.OutputSerializer(page, many=True)
+        serializer = self.OutputSerializer(page, many=True, context={"request": request})
         return self.get_paginated_response(serializer.data)
 
     @extend_schema(
-            request=InputSerializer, 
+            description="Send as multipart/form-data when uploading an image; JSON works without one.",
+            request={"multipart/form-data": InputSerializer, "application/json": InputSerializer},
             responses={201: OutputSerializer},
             )
     def post(self, request):
@@ -80,7 +94,7 @@ class ProductListCreateApi(GenericAPIView):
         )
 
         return Response(
-            self.OutputSerializer(product).data,
+            self.OutputSerializer(product, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -88,11 +102,8 @@ class ProductListCreateApi(GenericAPIView):
 class ProductDetailApi(APIView):
     permission_classes = [IsAuthenticated, IsVendor]
 
-    class InputSerializer(ProductListCreateApi.InputSerializer):
-        pass
-
-    class OutputSerializer(ProductListCreateApi.OutputSerializer):
-        pass
+    InputSerializer = ProductListCreateApi.InputSerializer
+    OutputSerializer = ProductListCreateApi.OutputSerializer
 
     def _get_owned_product(self, request, product_id):
         return get_owned_product(
@@ -100,7 +111,8 @@ class ProductDetailApi(APIView):
             product_id=product_id,
         )
     @extend_schema(
-    request=InputSerializer,
+    description="Send as multipart/form-data when uploading an image; JSON works without one.",
+    request={"multipart/form-data": InputSerializer, "application/json": InputSerializer},
     responses={200: OutputSerializer},
      )
     def patch(self, request, product_id):
@@ -123,7 +135,7 @@ class ProductDetailApi(APIView):
             **serializer.validated_data,
         )
 
-        return Response(self.OutputSerializer(product).data)
+        return Response(self.OutputSerializer(product, context={"request": request}).data)
     @extend_schema(
     responses={204: None},
         )
