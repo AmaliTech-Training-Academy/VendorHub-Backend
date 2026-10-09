@@ -3,9 +3,11 @@ import io
 import os
 import shutil
 import tempfile
+from unittest import mock
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.files.storage import FileSystemStorage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, connection
 from django.test import override_settings
@@ -576,7 +578,6 @@ class MyDeliverySettingsTests(APITestCase):
 
 
 def make_image(name="logo.png", size=(10, 10), noise=False):
-    # A real PNG built in memory; noise makes it big and hard to compress, for the size-limit test.
     if noise:
         image = Image.frombytes("RGB", size, os.urandom(size[0] * size[1] * 3))
     else:
@@ -590,7 +591,6 @@ class MyStorefrontTests(APITestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # Uploaded logos go to a throwaway local folder, never the real media/ folder or the S3 bucket.
         cls.media_root = tempfile.mkdtemp()
         cls.media_override = override_settings(
             MEDIA_ROOT=cls.media_root,
@@ -654,7 +654,6 @@ class MyStorefrontTests(APITestCase):
     def logo_path(self, vendor):
         return VendorStorefront.objects.get(vendor=vendor).logo.path
 
-    # Security: a vendor can only ever read or change their own storefront.
 
     def test_url_has_no_vendor_id(self):
         self.assertEqual(self.url, "/api/vendors/me/storefront/")
@@ -695,7 +694,6 @@ class MyStorefrontTests(APITestCase):
         self.assertEqual(VendorStorefront.objects.get(vendor=self.other_vendor).slogan, "Mine")
         self.assertFalse(VendorStorefront.objects.filter(vendor=self.vendor).exists())
 
-    # Reading and updating.
 
     def test_new_vendor_gets_blank_storefront(self):
         self.client.force_authenticate(user=self.vendor_user)
@@ -753,7 +751,6 @@ class MyStorefrontTests(APITestCase):
         self.assertEqual(self.vendor.business_name, "Mama's Kitchen")
         self.assertEqual(VendorStorefront.objects.get(slogan="Hi").vendor, self.vendor)
 
-    # Logo uploads.
 
     def test_vendor_can_upload_logo(self):
         response = self.upload_logo()
@@ -763,7 +760,6 @@ class MyStorefrontTests(APITestCase):
         self.assertTrue(logo.name.startswith(f"vendors/{self.vendor.id}/logo/"))
         self.assertTrue(logo.name.endswith(".png"))
         self.assertTrue(os.path.exists(logo.path))
-        # A full URL the frontend can load directly.
         self.assertEqual(response.data["logo"], f"http://testserver/media/{logo.name}")
 
     def test_logo_and_text_can_be_sent_together(self):
@@ -801,6 +797,31 @@ class MyStorefrontTests(APITestCase):
         self.assertIsNone(response.data["logo"])
         self.assertFalse(os.path.exists(old_path))
 
+    def test_text_update_works_when_saved_logo_cannot_be_read(self):
+        self.upload_logo()
+
+        with mock.patch.object(FileSystemStorage, "size", side_effect=FileNotFoundError):
+            response = self.patch({"slogan": "Still works"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(VendorStorefront.objects.get(vendor=self.vendor).slogan, "Still works")
+
+    def test_failed_old_logo_cleanup_still_returns_success(self):
+        self.upload_logo()
+
+        with (
+            mock.patch.object(FileSystemStorage, "delete", side_effect=OSError("storage down")),
+            self.assertLogs("vendors.services", level="ERROR") as logs,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            response = self.patch({"logo": None, "slogan": "Fresh"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        storefront = VendorStorefront.objects.get(vendor=self.vendor)
+        self.assertFalse(storefront.logo)
+        self.assertEqual(storefront.slogan, "Fresh")
+        self.assertIn("Could not delete old storefront logo", logs.output[0])
+
     def test_rejects_file_that_is_not_an_image(self):
         fake = SimpleUploadedFile("logo.png", b"not really an image", content_type="image/png")
 
@@ -817,13 +838,11 @@ class MyStorefrontTests(APITestCase):
         self.assertFalse(VendorStorefront.objects.exclude(logo="").exists())
 
     def test_service_validates_before_saving(self):
-        # Direct callers (not only the API) get the same checks.
         with self.assertRaises(ValidationError):
             storefront_update(user=self.vendor_user, phone_number="not a phone")
 
         self.assertFalse(VendorStorefront.objects.exclude(phone_number="").exists())
 
-    # Employees see the details on the storefront list.
 
     def test_storefront_list_shows_vendor_details(self):
         self.patch({"logo": make_image(), "slogan": "Home-cooked", "phone_number": "0244123456"}, format="multipart")

@@ -38,5 +38,4 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
 ]
 
-# Lets the dev server show uploaded logos. Only active when DEBUG is on; production will serve them from S3.
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

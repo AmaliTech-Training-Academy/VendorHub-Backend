@@ -149,28 +149,21 @@ STORAGES = {
     },
 }
 
-# Uploaded files (vendor logos). Saved to S3 when AWS_STORAGE_BUCKET_NAME is set, otherwise to the local media/ folder.
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 AWS_STORAGE_BUCKET_NAME = env("AWS_STORAGE_BUCKET_NAME", default="")
 
 if AWS_STORAGE_BUCKET_NAME:
-    # Defaults to the bucket's region, so a missing setting can't stop the server from starting.
     AWS_S3_REGION_NAME = env("AWS_S3_REGION_NAME", default="eu-west-1")
-    # No keys here on purpose: boto3 reads AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY from the environment locally,
-    # and uses the server's IAM role on Elastic Beanstalk.
     STORAGES["default"] = {
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
             "bucket_name": AWS_STORAGE_BUCKET_NAME,
             "region_name": AWS_S3_REGION_NAME,
-            # The region's own address and signing method; newer regions (e.g. af-south-1) reject the old global ones.
             "endpoint_url": f"https://s3.{AWS_S3_REGION_NAME}.amazonaws.com",
             "addressing_style": "virtual",
             "signature_version": "s3v4",
-            # The bucket stays private. The API hands out signed links that stop working after an hour,
-            # so a logo URL can't be shared around forever.
             "default_acl": None,
             "querystring_auth": True,
             "querystring_expire": env.int("AWS_S3_URL_EXPIRE_SECONDS", default=3600),
@@ -216,6 +209,7 @@ SIMPLE_JWT = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "VendorHub API",
-    "DESCRIPTION": "API for vendor and employee authentication, product catalogue, and ordering",
+    "DESCRIPTION": "API for vendor and employee authentication, product catalogue, ordering, vendor storefront",
     "VERSION": "1.0.0",
+    "COMPONENT_SPLIT_REQUEST": True,
 }

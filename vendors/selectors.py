@@ -46,7 +46,6 @@ def vendor_storefront_list():
 
 
 def vendor_storefront(*, vendor):
-    # A vendor who never filled in their storefront gets a blank, unsaved one, so the API always has the same shape.
     try:
         return vendor.storefront
     except VendorStorefront.DoesNotExist:

@@ -1,8 +1,12 @@
+import logging
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
 from .models import DeliveryWindow, VendorStorefront, Weekday
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -57,7 +61,6 @@ def delivery_settings_update(*, user, delivery_fee, available_days, time_windows
 
 @transaction.atomic
 def storefront_update(*, user, **fields):
-    # Only the fields that were sent are changed, so a vendor can update just their phone without touching the rest.
     vendor = getattr(user, "vendor_profile", None)
     if vendor is None:
         raise PermissionDenied("Only vendors can manage their storefront.")
@@ -70,13 +73,18 @@ def storefront_update(*, user, **fields):
     for field, value in fields.items():
         setattr(storefront, field, value)
 
-    # Checked here too (not only in the API), so direct callers can't save a bad phone number or an oversized logo.
-    storefront.full_clean()
+    storefront.full_clean(exclude=None if "logo" in fields else ["logo"])
     storefront.save()
 
-    # Delete the replaced logo file only once the new one is safely saved; if saving fails, the old one stays.
     if "logo" in fields and old_logo and old_logo != storefront.logo.name:
         storage = storefront.logo.storage
-        transaction.on_commit(lambda: storage.delete(old_logo))
+        transaction.on_commit(lambda: delete_old_logo(storage, old_logo))
 
     return storefront
+
+
+def delete_old_logo(storage, name):
+    try:
+        storage.delete(name)
+    except Exception:
+        logger.exception("Could not delete old storefront logo %s; the storefront update was saved.", name)

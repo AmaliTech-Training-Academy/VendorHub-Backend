@@ -44,9 +44,7 @@ class DeliveryWindowOutputSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
-
 class StorefrontOutputSerializer(serializers.ModelSerializer):
-    # logo is the full image URL, or null when the vendor has not uploaded one.
     class Meta:
         model = VendorStorefront
         ref_name = "StorefrontDetails"
@@ -105,7 +103,6 @@ class VendorListApi(GenericAPIView):
     )
     def get(self, request):
         page = self.paginate_queryset(vendor_storefront_list())
-        # The request is passed in so logo URLs come back as full links the frontend can load.
         serializer = self.OutputSerializer(page, many=True, context=self.get_serializer_context())
         return self.get_paginated_response(serializer.data)
 
@@ -256,12 +253,9 @@ class MyDeliverySettingsApi(APIView):
 
 
 class MyStorefrontApi(APIView):
-    # The logged-in vendor's own storefront. Like delivery settings, the vendor comes from the login token, never the URL.
     permission_classes = [IsAuthenticated, IsStorefrontVendor]
 
     class InputSerializer(serializers.Serializer):
-        # Every field is optional: PATCH changes only what is sent. Send logo as null (or empty) to remove it.
-        # help_text shows up in Swagger, so the frontend can read the rules there.
         logo = serializers.ImageField(
             required=False,
             allow_null=True,

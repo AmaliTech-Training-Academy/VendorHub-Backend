@@ -50,7 +50,6 @@ class DeliveryWindow(models.Model):
 
 
 def storefront_logo_path(storefront, filename):
-    # We pick the file name, so two uploads never overwrite each other and the vendor's own name is never used.
     return f"vendors/{storefront.vendor_id}/logo/{uuid4().hex}{Path(filename).suffix.lower()}"
 
 
