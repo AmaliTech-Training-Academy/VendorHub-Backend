@@ -22,6 +22,8 @@ class VendorRegisterApi(APIView):
         id = serializers.IntegerField()
         email = serializers.EmailField()
         role = serializers.CharField(max_length=20)
+        business_name = serializers.CharField(source="vendor_profile.business_name")
+        owner_name = serializers.CharField(source="vendor_profile.owner_name")
     @extend_schema(
     request=InputSerializer,
     responses={201: OutputSerializer},
@@ -95,6 +97,7 @@ class LoginApi(APIView):
         id = serializers.IntegerField()
         email = serializers.EmailField()
         role = serializers.CharField(max_length=20)
+        name = serializers.CharField()
     @extend_schema(
     request=InputSerializer,
     responses={200: OutputSerializer},
@@ -108,6 +111,11 @@ class LoginApi(APIView):
         except DjangoValidationError as e:
             return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
 
+        if user.role == "VENDOR":
+            name = user.vendor_profile.owner_name
+        else:
+            name = user.employee_profile.full_name
+
         refresh = RefreshToken.for_user(user)
         return Response({
             "access": str(refresh.access_token),
@@ -115,4 +123,5 @@ class LoginApi(APIView):
             "id": user.id,
             "email": user.email,
             "role": user.role,
+            "name": name
         }, status=status.HTTP_200_OK)
