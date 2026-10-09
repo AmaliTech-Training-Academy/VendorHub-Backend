@@ -1,14 +1,15 @@
-from django.test import TestCase
-from django.contrib import admin
-from django.test import RequestFactory
 from unittest.mock import MagicMock
+
+from django.contrib import admin
+from django.core.exceptions import ValidationError
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from accounts.models import AppUser, VendorProfile, EmployeeProfile
-from accounts.services import vendor_register, employee_register, user_login
-from django.core.exceptions import ValidationError
+from accounts.models import AppUser, EmployeeProfile, VendorProfile
+from accounts.services import employee_register, user_login, vendor_register
+
 
 class VendorRegistrationTests(TestCase):
     def test_vendor_register_creates_user_and_profile(self):

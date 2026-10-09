@@ -1,4 +1,4 @@
-from datetime import timedelta, time
+from datetime import timedelta
 from decimal import Decimal
 from unittest import mock
 
@@ -377,21 +377,20 @@ class OrderCreateApiTests(APITestCase):
 
         with mock.patch(
             "orders.services.OrderItem.objects.bulk_create",
-            side_effect=Exception("Simulated failure"),
-        ):
-            with self.assertRaises(Exception):
-                order_create(
-                    user=self.employee_user,
-                    vendor_id=self.vendor.id,
-                    items=[
-                        {
-                            "product_id": self.product.id,
-                            "quantity": 1,
-                        }
-                    ],
-                    selected_delivery_window=self.window.id,
-                    delivery_date=self.delivery_date,
-                )
+            side_effect=RuntimeError("Simulated failure"),
+        ), self.assertRaises(RuntimeError):
+            order_create(
+                user=self.employee_user,
+                vendor_id=self.vendor.id,
+                items=[
+                    {
+                        "product_id": self.product.id,
+                        "quantity": 1,
+                    }
+                ],
+                selected_delivery_window=self.window.id,
+                delivery_date=self.delivery_date,
+            )
 
         self.assertEqual(
             Order.objects.count(),

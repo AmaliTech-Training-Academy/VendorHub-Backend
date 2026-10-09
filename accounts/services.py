@@ -3,7 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
 
-from accounts.models import AppUser, VendorProfile, EmployeeProfile
+from accounts.models import AppUser, EmployeeProfile, VendorProfile
 
 
 @transaction.atomic

@@ -4,8 +4,8 @@ from rest_framework.test import APIClient
 
 from accounts.models import AppUser, VendorProfile
 
-from .models import Product
 from .apis import ProductListCreateApi
+from .models import Product
 
 
 class ProductInputSerializerTests(TestCase):

@@ -1,17 +1,17 @@
 from decimal import Decimal
 from uuid import uuid4
-from accounts.models import EmployeeProfile
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from accounts.models import EmployeeProfile
 from orders.models import Order, OrderItem
 from orders.selectors import (
     active_vendor_get,
     delivery_window_get,
-    order_products_get,
     order_get,
+    order_products_get,
 )
 from vendors.models import Weekday
 

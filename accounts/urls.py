@@ -1,6 +1,11 @@
 from django.urls import path
 
-from accounts.apis import CurrentUserApi, VendorRegisterApi, EmployeeRegisterApi, LoginApi
+from accounts.apis import (
+    CurrentUserApi,
+    EmployeeRegisterApi,
+    LoginApi,
+    VendorRegisterApi,
+)
 
 app_name = "accounts"
 

@@ -33,3 +33,14 @@ build-backend = "uv_build"
 
 [tool.uv]
 package = false
+
+[tool.ruff]
+exclude = ["**/migrations/**"]
+
+[tool.ruff.lint]
+ignore = ["RUF012"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.16.10",
+]

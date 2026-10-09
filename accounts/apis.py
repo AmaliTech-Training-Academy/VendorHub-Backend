@@ -1,12 +1,12 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
-from rest_framework import serializers, status
 from drf_spectacular.utils import extend_schema
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from accounts.services import vendor_register, employee_register, user_login
+from accounts.services import employee_register, user_login, vendor_register
 
 
 class VendorRegisterApi(APIView):
