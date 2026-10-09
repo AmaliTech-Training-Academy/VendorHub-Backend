@@ -266,7 +266,7 @@ class MyStorefrontApi(APIView):
             max_length=16,
             required=False,
             allow_blank=True,
-            help_text="7-15 digits with an optional leading +, no spaces, e.g. +233244123456.",
+            help_text="7-15 digits, optionally starting with + (so at most 16 characters), no spaces, e.g. +233244123456.",
         )
         address = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
@@ -292,7 +292,7 @@ class MyStorefrontApi(APIView):
             "Every field is optional: only the fields you send are changed.\n\n"
             f"- **logo**: image file (PNG, JPG, GIF or WebP), max {MAX_LOGO_SIZE_MB} MB. Send null to remove it.\n"
             "- **slogan**: max 150 characters.\n"
-            "- **phone_number**: 7-15 digits with an optional leading +, no spaces (e.g. +233244123456).\n"
+            "- **phone_number**: 7-15 digits, optionally starting with + (so at most 16 characters), no spaces, e.g. +233244123456.\n"
             "- **address**: max 255 characters.\n\n"
             'Errors return 400, e.g. `{"detail": "Logo must be 2 MB or smaller."}`.'
         ),
