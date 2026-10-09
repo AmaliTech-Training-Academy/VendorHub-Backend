@@ -3,13 +3,14 @@ from django.db.models import Prefetch
 from accounts.models import VendorProfile
 from products.models import Product
 
-from .models import DeliveryWindow, Weekday
+from .models import DeliveryWindow, VendorStorefront, Weekday
 
 
 def vendor_list():
     # An open vendor has an active shop (VendorProfile.is_active) AND an active login (AppUser.is_active).
     return (
         VendorProfile.objects.filter(is_active=True, user__is_active=True)
+        .select_related("storefront")
         .prefetch_related(
             Prefetch(
                 "delivery_windows",
@@ -42,6 +43,13 @@ def vendor_storefront_list():
             to_attr="available_products",
         )
     )
+
+
+def vendor_storefront(*, vendor):
+    try:
+        return vendor.storefront
+    except VendorStorefront.DoesNotExist:
+        return VendorStorefront(vendor=vendor)
 
 
 def vendor_available_days(*, vendor):
