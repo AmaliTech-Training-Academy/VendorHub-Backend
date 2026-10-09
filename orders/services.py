@@ -163,6 +163,19 @@ def order_create(
 
     OrderItem.objects.bulk_create(order_items)
 
+    from notifications.services import (
+        send_order_placed_employee,
+        send_order_placed_vendor,
+    )
+    transaction.on_commit(
+        lambda: send_order_placed_vendor(order),
+        robust=True,
+    )
+    transaction.on_commit(
+        lambda: send_order_placed_employee(order),
+        robust=True,
+    )
+
     return order
 
 
@@ -181,4 +194,11 @@ def order_status_update(*, user, order_id, new_status):
 
     order.status = new_status
     order.save(update_fields=["status", "updated_at"])
+    if new_status == Order.Status.READY_FOR_COLLECTION:
+        from notifications.services import send_order_ready_employee
+
+        transaction.on_commit(
+            lambda: send_order_ready_employee(order),
+            robust=True,
+        )
     return order

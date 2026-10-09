@@ -96,7 +96,10 @@ class VendorEmailTests(TestCase):
 
     @patch("notifications.services.send_email", side_effect=RuntimeError("Brevo unavailable"))
     def test_provider_failure_does_not_break_registration(self, send_email):
-        with self.captureOnCommitCallbacks(execute=True):
+        with (
+            self.assertLogs("notifications.services", level="ERROR"),
+            self.captureOnCommitCallbacks(execute=True),
+        ):
             user = vendor_register(
                 email="provider-failure@example.com",
                 password="StrongPass123!",
