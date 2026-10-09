@@ -153,6 +153,31 @@ class VendorStorefrontTests(APITestCase):
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["name"], "Jollof")
 
+    @override_settings(
+        STORAGES={
+            **settings.STORAGES,
+            "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        },
+    )
+    def test_products_include_image_url(self):
+        Product.objects.create(
+            vendor=self.active_vendor,
+            name="Jollof",
+            price="20.00",
+            image=f"products/{self.active_vendor.id}/jollof.png",
+        )
+        Product.objects.create(vendor=self.active_vendor, name="Waakye", price="15.00")
+        self.client.force_authenticate(user=self.active_user)
+
+        results = self.get_products(self.active_vendor.id).data["results"]
+        images = {product["name"]: product["image"] for product in results}
+
+        self.assertEqual(
+            images["Jollof"],
+            f"http://testserver/media/products/{self.active_vendor.id}/jollof.png",
+        )
+        self.assertIsNone(images["Waakye"])
+
     def test_products_of_inactive_vendor_not_found(self):
         Product.objects.create(vendor=self.inactive_vendor, name="Hidden", price="20.00")
         self.client.force_authenticate(user=self.active_user)
