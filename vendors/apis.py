@@ -1,3 +1,5 @@
+from itertools import pairwise
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from drf_spectacular.utils import extend_schema, extend_schema_field
 from rest_framework import serializers, status
@@ -173,7 +175,7 @@ class MyDeliverySettingsApi(APIView):
 
             # Every window runs on the same days, so no two windows may overlap in time.
             by_start = sorted(windows, key=lambda window: window["start_time"])
-            for earlier, later in zip(by_start, by_start[1:]):
+            for earlier, later in pairwise(by_start):
                 if later["start_time"] < earlier["end_time"]:
                     raise serializers.ValidationError(
                         f'"{earlier["window_name"]}" and "{later["window_name"]}" overlap.'

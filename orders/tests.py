@@ -1,4 +1,4 @@
-from datetime import timedelta, time
+from datetime import timedelta
 from decimal import Decimal
 from unittest import mock
 
@@ -26,6 +26,8 @@ class OrderCreateApiTests(APITestCase):
             business_name="Vendor A",
             owner_name="Vendor Owner",
             delivery_fee=Decimal("5.00"),
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            is_active=True,
         )
 
         self.other_vendor_user = AppUser.objects.create_user(
@@ -38,6 +40,8 @@ class OrderCreateApiTests(APITestCase):
             business_name="Vendor B",
             owner_name="Other Owner",
             delivery_fee=Decimal("10.00"),
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            is_active=True,
         )
 
         self.employee_user = AppUser.objects.create_user(
@@ -149,6 +153,25 @@ class OrderCreateApiTests(APITestCase):
         self.assertEqual(order.total, Decimal("27.50"))
         self.assertEqual(order.status, Order.Status.RECEIVED)
         self.assertEqual(order.order_items.count(), 2)
+
+    @mock.patch("notifications.services.send_order_placed_employee")
+    @mock.patch("notifications.services.send_order_placed_vendor")
+    def test_order_creation_sends_vendor_and_employee_emails(
+        self,
+        send_vendor_email,
+        send_employee_email,
+    ):
+        with self.captureOnCommitCallbacks(execute=True):
+            order = order_create(
+                user=self.employee_user,
+                vendor_id=self.vendor.id,
+                items=self.payload["items"],
+                selected_delivery_window=self.window.id,
+                delivery_date=self.delivery_date,
+            )
+
+        send_vendor_email.assert_called_once_with(order)
+        send_employee_email.assert_called_once_with(order)
 
     def test_vendor_cannot_create_employee_order(self):
         self.client.force_authenticate(user=self.vendor_user)
@@ -377,21 +400,20 @@ class OrderCreateApiTests(APITestCase):
 
         with mock.patch(
             "orders.services.OrderItem.objects.bulk_create",
-            side_effect=Exception("Simulated failure"),
-        ):
-            with self.assertRaises(Exception):
-                order_create(
-                    user=self.employee_user,
-                    vendor_id=self.vendor.id,
-                    items=[
-                        {
-                            "product_id": self.product.id,
-                            "quantity": 1,
-                        }
-                    ],
-                    selected_delivery_window=self.window.id,
-                    delivery_date=self.delivery_date,
-                )
+            side_effect=RuntimeError("Simulated failure"),
+        ), self.assertRaises(RuntimeError):
+            order_create(
+                user=self.employee_user,
+                vendor_id=self.vendor.id,
+                items=[
+                    {
+                        "product_id": self.product.id,
+                        "quantity": 1,
+                    }
+                ],
+                selected_delivery_window=self.window.id,
+                delivery_date=self.delivery_date,
+            )
 
         self.assertEqual(
             Order.objects.count(),
@@ -692,6 +714,8 @@ class OrderStatusUpdateTests(APITestCase):
             business_name="Vendor A",
             owner_name="Owner A",
             delivery_fee=Decimal("5.00"),
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            is_active=True,
         )
 
         # Vendor B - tries to update Vendor A's order
@@ -706,6 +730,8 @@ class OrderStatusUpdateTests(APITestCase):
             business_name="Vendor B",
             owner_name="Owner B",
             delivery_fee=Decimal("5.00"),
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            is_active=True,
         )
 
         # Employee - the order's customer
@@ -800,11 +826,15 @@ class OrderStatusUpdateTests(APITestCase):
             user=self.vendor_a_user,
         )
 
-        response = self.client.patch(
-            self.url,
-            {"status": "READY FOR COLLECTION"},
-            format="json",
-        )
+        with (
+            mock.patch("notifications.services.send_order_ready_employee") as send_email,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            response = self.client.patch(
+                self.url,
+                {"status": "READY FOR COLLECTION"},
+                format="json",
+            )
 
         self.assertEqual(
             response.status_code,
@@ -814,6 +844,7 @@ class OrderStatusUpdateTests(APITestCase):
             response.data["status"],
             "READY FOR COLLECTION",
         )
+        send_email.assert_called_once()
 
     def test_invalid_status_is_rejected(self):
         self.client.force_authenticate(

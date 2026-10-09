@@ -1,5 +1,5 @@
-from products.permissions import IsVendor
+from products.permissions import IsApprovedVendor
 
 
-class IsVendorAccount(IsVendor):
+class IsVendorAccount(IsApprovedVendor):
     message = "Only vendors can manage delivery settings."

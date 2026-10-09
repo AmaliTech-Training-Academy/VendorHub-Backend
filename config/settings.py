@@ -9,8 +9,8 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
 
 import environ
 
@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'orders',
     'products',
     'vendors',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -189,4 +190,12 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "VendorHub API",
     "DESCRIPTION": "API for vendor and employee authentication, product catalogue, and ordering",
     "VERSION": "1.0.0",
+}
+
+BREVO = {
+    "API_KEY": env("BREVO_API_KEY", default=""),
+    "API_URL": env("BREVO_API_URL", default="https://api.brevo.com/v3"),
+    "SENDER_EMAIL": env("BREVO_SENDER_EMAIL", default=""),
+    "SENDER_NAME": env("BREVO_SENDER_NAME", default="VendorHub"),
+    "SUPPORT_EMAIL": env("BREVO_SUPPORT_EMAIL", default=""),
 }
