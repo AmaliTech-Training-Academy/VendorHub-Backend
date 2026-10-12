@@ -1,6 +1,7 @@
 from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
 from django.core.exceptions import ValidationError as DjangoValidationError
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiExample, OpenApiParameter, extend_schema
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -21,11 +22,33 @@ def _detail_from(exception):
     return str(exception) or "Request failed."
 
 
+class OrderErrorDetailSerializer(serializers.Serializer):
+    """Shape of the 400/403 body returned when a service rejects the request."""
+
+    detail = serializers.CharField(
+        help_text="Human-readable error message. Multiple messages are joined with '; '.",
+    )
+
+    class Meta:
+        ref_name = "OrderErrorDetail"
+
+
+ORDER_VALIDATION_ERROR_DESCRIPTION = (
+    "Validation failed. Either a service-level error "
+    '(`{"detail": "..."}`) or field-level errors '
+    '(`{"field_name": ["..."]}`).'
+)
+
+
 class OrderItemInputSerializer(serializers.Serializer):
-    product_id = serializers.IntegerField(min_value=1)
+    product_id = serializers.IntegerField(
+        min_value=1,
+        help_text="ID of the product being ordered. Must belong to the selected vendor.",
+    )
     quantity = serializers.IntegerField(
         min_value=1,
         max_value=100,
+        help_text="Number of units, from 1 to 100.",
     )
 
     class Meta:
@@ -40,10 +63,12 @@ class OrderItemOutputSerializer(serializers.Serializer):
     unit_price = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
+        help_text="Price per unit at the time the order was placed.",
     )
     subtotal = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
+        help_text="unit_price multiplied by quantity.",
     )
 
     class Meta:
@@ -68,6 +93,7 @@ class OrderListOutputSerializer(serializers.Serializer):
     subtotal = serializers.DecimalField(
         max_digits=10,
         decimal_places=2,
+        help_text="Sum of all item subtotals, before the delivery fee.",
     )
     delivery_fee = serializers.DecimalField(
         max_digits=10,
@@ -77,6 +103,7 @@ class OrderListOutputSerializer(serializers.Serializer):
         max_digits=10,
         decimal_places=2,
         source="total",
+        help_text="subtotal plus delivery_fee.",
     )
     status = serializers.CharField()
     created_at = serializers.DateTimeField()
@@ -90,6 +117,12 @@ class OrderListApi(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
+        summary="List My Orders",
+        description=(
+            "Returns the orders visible to the logged-in user. "
+            "Requires a valid access token."
+        ),
+        tags=["Orders"],
         responses={
             status.HTTP_200_OK: OrderListOutputSerializer(many=True),
         },
@@ -107,10 +140,21 @@ class OrderCreateApi(APIView):
     permission_classes = [IsAuthenticated]
 
     class InputSerializer(serializers.Serializer):
-        vendor_id = serializers.IntegerField(min_value=1)
-        items = OrderItemInputSerializer(many=True)
-        selected_delivery_window = serializers.IntegerField(min_value=1)
-        delivery_date = serializers.DateField()
+        vendor_id = serializers.IntegerField(
+            min_value=1,
+            help_text="ID of the vendor the order is placed with.",
+        )
+        items = OrderItemInputSerializer(
+            many=True,
+            help_text="At least one item. The same product cannot appear twice.",
+        )
+        selected_delivery_window = serializers.IntegerField(
+            min_value=1,
+            help_text="ID of one of the vendor's delivery windows.",
+        )
+        delivery_date = serializers.DateField(
+            help_text="Requested delivery date (YYYY-MM-DD).",
+        )
 
         class Meta:
             ref_name = "OrderCreateInput"
@@ -152,6 +196,7 @@ class OrderCreateApi(APIView):
         subtotal = serializers.DecimalField(
             max_digits=10,
             decimal_places=2,
+            help_text="Sum of all item subtotals, before the delivery fee.",
         )
         delivery_fee = serializers.DecimalField(
             max_digits=10,
@@ -161,6 +206,7 @@ class OrderCreateApi(APIView):
             max_digits=10,
             decimal_places=2,
             source="total",
+            help_text="subtotal plus delivery_fee.",
         )
         status = serializers.CharField()
         created_at = serializers.DateTimeField()
@@ -170,10 +216,47 @@ class OrderCreateApi(APIView):
             ref_name = "OrderCreateOutput"
 
     @extend_schema(
+        summary="Create an Order",
+        description=(
+            "Places a new order with a vendor for a chosen delivery window and date. "
+            "Requires a valid access token. Returns 400 when validation fails "
+            "(for example an empty or duplicated item list) and 403 when the "
+            "logged-in user is not allowed to place orders."
+        ),
+        tags=["Orders"],
         request=InputSerializer,
         responses={
             status.HTTP_201_CREATED: OutputSerializer,
+            status.HTTP_400_BAD_REQUEST: OpenApiTypes.OBJECT,
+            status.HTTP_403_FORBIDDEN: OrderErrorDetailSerializer,
         },
+        examples=[
+            OpenApiExample(
+                "Create order request",
+                value={
+                    "vendor_id": 1,
+                    "items": [
+                        {"product_id": 3, "quantity": 2},
+                        {"product_id": 5, "quantity": 1},
+                    ],
+                    "selected_delivery_window": 2,
+                    "delivery_date": "2026-10-20",
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Duplicate products",
+                value={"items": ["Duplicate products are not allowed in one order."]},
+                response_only=True,
+                status_codes=["400"],
+            ),
+            OpenApiExample(
+                "Service-level error",
+                value={"detail": "Request failed."},
+                response_only=True,
+                status_codes=["400"],
+            ),
+        ],
     )
     def post(self, request):
         serializer = self.InputSerializer(data=request.data)
@@ -207,6 +290,7 @@ class OrderStatusUpdateApi(APIView):
     class InputSerializer(serializers.Serializer):
         status = serializers.ChoiceField(
             choices=Order.Status.choices,
+            help_text="The new status for the order.",
         )
 
         class Meta:
@@ -221,9 +305,26 @@ class OrderStatusUpdateApi(APIView):
             ref_name = "OrderStatusUpdateOutput"
 
     @extend_schema(
+        summary="Update Order Status",
+        description=(
+            "Moves an order to a new status. Requires a valid access token. "
+            "Returns 400 when the transition is not valid and 403 when the "
+            "logged-in user is not allowed to change this order's status."
+        ),
+        tags=["Orders"],
+        parameters=[
+            OpenApiParameter(
+                name="order_id",
+                type=OpenApiTypes.INT,
+                location=OpenApiParameter.PATH,
+                description="ID of the order to update.",
+            ),
+        ],
         request=InputSerializer,
         responses={
             status.HTTP_200_OK: OutputSerializer,
+            status.HTTP_400_BAD_REQUEST: OpenApiTypes.OBJECT,
+            status.HTTP_403_FORBIDDEN: OrderErrorDetailSerializer,
         },
     )
     def patch(self, request, order_id):

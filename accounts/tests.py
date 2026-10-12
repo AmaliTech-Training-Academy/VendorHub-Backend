@@ -1,11 +1,16 @@
-from django.test import TestCase
+from unittest.mock import MagicMock
+
+from django.contrib import admin
+from django.core.exceptions import ValidationError
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from accounts.models import AppUser, VendorProfile, EmployeeProfile
-from accounts.services import vendor_register, employee_register, user_login
-from django.core.exceptions import ValidationError
+from accounts.models import AppUser, EmployeeProfile, VendorProfile
+from accounts.services import employee_register, user_login, vendor_register
+
+
 
 class VendorRegistrationTests(TestCase):
     def test_vendor_register_creates_user_and_profile(self):
@@ -14,7 +19,23 @@ class VendorRegistrationTests(TestCase):
             business_name="Test Biz", owner_name="Test Owner"
         )
         self.assertEqual(user.role, "VENDOR")
-        self.assertTrue(VendorProfile.objects.filter(user=user).exists())
+        vendor = VendorProfile.objects.get(user=user)
+        self.assertEqual(vendor.verification_status, VendorProfile.VerificationStatus.PENDING)
+
+    def test_vendor_can_retrieve_verification_status(self):
+        user = vendor_register(
+            email="status@test.com", password="pass12345",
+            business_name="Test Biz", owner_name="Test Owner"
+        )
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("accounts:current-user"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {
+            "role": "VENDOR",
+            "verification_status": "PENDING",
+        })
 
     def test_vendor_register_hashes_password(self):
         user = vendor_register(
@@ -57,6 +78,7 @@ class LoginTests(TestCase):
     def test_login_nonexistent_email_fails(self):
         with self.assertRaises(ValidationError):
             user_login(email="nobody@test.com", password="pass12345")
+
 
 class VendorRegistrationEdgeCaseTests(APITestCase):
     """Edge cases for vendor registration via the API."""
@@ -163,7 +185,8 @@ class LoginEdgeCaseTests(APITestCase):
             password="StrongPass123!",
             role="EMPLOYEE",
         )
-
+        EmployeeProfile.objects.create(user=self.user, full_name="Test Employee")
+        
     def test_login_fails_for_inactive_user(self):
         self.user.is_active = False
         self.user.save()
@@ -189,6 +212,7 @@ class LoginEdgeCaseTests(APITestCase):
             "password": "StrongPass123!",
         })
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class PasswordSecurityTests(APITestCase):
 
@@ -248,3 +272,89 @@ class PasswordSecurityTests(APITestCase):
 
         self.assertEqual(r1.status_code, r2.status_code)
         self.assertEqual(r1.data, r2.data)
+
+
+class VendorAdminVerificationTests(TestCase):
+    def setUp(self):
+        self.request = RequestFactory().get("/admin/accounts/vendorprofile/")
+        self.request._messages = MagicMock()
+        self.admin = admin.site._registry[VendorProfile].__class__(
+            VendorProfile, admin.site
+        )
+
+    def create_vendor(self, email):
+        user = AppUser.objects.create_user(
+            email=email, password="StrongPass123!", role="VENDOR"
+        )
+        return VendorProfile.objects.create(
+            user=user,
+            business_name="Test Shop",
+            owner_name="Test Owner",
+        )
+
+    def test_admin_can_approve_vendor(self):
+        vendor = self.create_vendor("approve@test.com")
+
+        self.admin.approve_vendors(self.request, VendorProfile.objects.filter(pk=vendor.pk))
+
+        vendor.refresh_from_db()
+        self.assertEqual(vendor.verification_status, VendorProfile.VerificationStatus.APPROVED)
+        
+
+    def test_admin_can_decline_vendor_and_preserve_reason(self):
+        vendor = self.create_vendor("decline@test.com")
+        vendor.decline_reason = "Missing registration certificate."
+        vendor.save(update_fields=["decline_reason", "updated_at"])
+
+        self.admin.decline_vendors(self.request, VendorProfile.objects.filter(pk=vendor.pk))
+
+        vendor.refresh_from_db()
+        self.assertEqual(vendor.verification_status, VendorProfile.VerificationStatus.DECLINED)
+        self.assertEqual(vendor.decline_reason, "Missing registration certificate.")
+        self.assertTrue(AppUser.objects.filter(pk=vendor.user_id).exists())
+        self.assertTrue(VendorProfile.objects.filter(pk=vendor.pk).exists())
+class ResponseNameFieldsTests(APITestCase):
+
+    def setUp(self):
+        self.vendor_url = reverse("accounts:vendor-register")
+        self.login_url = reverse("accounts:login")
+
+    def test_vendor_register_returns_business_and_owner_name(self):
+        response = self.client.post(self.vendor_url, {
+            "email": "v_name@test.com",
+            "password": "StrongPass123!",
+            "business_name": "TechCorp GH",
+            "owner_name": "Kwame Mensah",
+        })
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["business_name"], "TechCorp GH")
+        self.assertEqual(response.data["owner_name"], "Kwame Mensah")
+
+    def test_login_returns_owner_name_for_vendor(self):
+        vendor_register(
+            email="v_login@test.com",
+            password="StrongPass123!",
+            business_name="Vendor Biz",
+            owner_name="Vendor Owner",
+        )
+
+        response = self.client.post(self.login_url, {
+            "email": "v_login@test.com",
+            "password": "StrongPass123!",
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["name"], "Vendor Owner")
+
+    def test_login_returns_full_name_for_employee(self):
+        employee_register(
+            email="e_login@test.com",
+            password="StrongPass123!",
+            full_name="Ama Serwaa",
+        )
+
+        response = self.client.post(self.login_url, {
+            "email": "e_login@test.com",
+            "password": "StrongPass123!",
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["name"], "Ama Serwaa")

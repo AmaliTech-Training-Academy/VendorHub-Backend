@@ -1,5 +1,9 @@
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+)
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 
 # Create your models here.
 
@@ -42,6 +46,8 @@ class AppUser(AbstractBaseUser, PermissionsMixin):
 class EmployeeProfile(models.Model):
     user = models.OneToOneField(AppUser, on_delete=models.CASCADE, related_name='employee_profile')
     full_name = models.CharField(max_length=255)
+    office_address = models.CharField(max_length=255, blank=True)
+    phone_number = models.CharField(max_length=16, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -49,11 +55,23 @@ class EmployeeProfile(models.Model):
         return self.full_name
 
 class VendorProfile(models.Model):
+    class VerificationStatus(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        APPROVED = 'APPROVED', 'Approved'
+        DECLINED = 'DECLINED', 'Declined'
+    @property
+    def is_approved(self):
+        return self.verification_status == self.VerificationStatus.APPROVED
     user = models.OneToOneField(AppUser, on_delete=models.CASCADE, related_name='vendor_profile')
     business_name = models.CharField(max_length=255)
     owner_name = models.CharField(max_length=255)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    is_active = models.BooleanField(default=True)
+    verification_status = models.CharField(
+        max_length=10,
+        choices=VerificationStatus.choices,
+        default=VerificationStatus.PENDING,
+    )
+    decline_reason = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -14,8 +14,8 @@ from rest_framework.test import APIClient
 
 from accounts.models import AppUser, VendorProfile
 
-from .models import Product
 from .apis import ProductListCreateApi
+from .models import Product
 
 
 def make_image(name="product.png", size=(10, 10), noise=False):
@@ -55,6 +55,7 @@ class ProductApiTests(TestCase):
             user=self.vendor_user,
             business_name="Demo Store",
             owner_name="Demo Owner",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
         )
         self.other_vendor_user = AppUser.objects.create_user(
             email="other-vendor@example.com",
@@ -65,6 +66,7 @@ class ProductApiTests(TestCase):
             user=self.other_vendor_user,
             business_name="Other Store",
             owner_name="Other Owner",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
         )
         self.employee_user = AppUser.objects.create_user(
             email="employee@example.com",
@@ -163,8 +165,8 @@ class ProductApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_inactive_vendor_cannot_manage_or_list_products(self):
-        self.vendor.is_active = False
-        self.vendor.save(update_fields=["is_active"])
+        self.vendor.save(update_fields=["verification_status"])
+        self.vendor.verification_status = VendorProfile.VerificationStatus.PENDING
         self.authenticate_as(self.vendor_user)
 
         create_response = self.client.post(
@@ -176,6 +178,43 @@ class ProductApiTests(TestCase):
 
         list_response = self.client.get(self.collection_url)
         self.assertEqual(list_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_pending_vendor_cannot_manage_or_list_products(self):
+        pending_user = AppUser.objects.create_user(
+            email="pending-vendor@example.com",
+            password="StrongPass123!",
+            role="VENDOR",
+        )
+        VendorProfile.objects.create(
+            user=pending_user,
+            business_name="Pending Shop",
+            owner_name="Pending Owner",
+        )
+        self.authenticate_as(pending_user)
+
+        self.assertEqual(
+            self.client.get(self.collection_url).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
+
+    def test_declined_vendor_cannot_manage_or_list_products(self):
+        declined_user = AppUser.objects.create_user(
+            email="declined-vendor@example.com",
+            password="StrongPass123!",
+            role="VENDOR",
+        )
+        VendorProfile.objects.create(
+            user=declined_user,
+            business_name="Declined Shop",
+            owner_name="Declined Owner",
+            verification_status=VendorProfile.VerificationStatus.DECLINED,
+        )
+        self.authenticate_as(declined_user)
+
+        self.assertEqual(
+            self.client.get(self.collection_url).status_code,
+            status.HTTP_403_FORBIDDEN,
+        )
 
     def test_product_price_constraint_rejects_direct_invalid_write(self):
         from django.db import IntegrityError
@@ -218,6 +257,7 @@ class ProductImageTests(TestCase):
             user=self.vendor_user,
             business_name="Demo Store",
             owner_name="Demo Owner",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
         )
         self.client.force_authenticate(user=self.vendor_user)
         self.collection_url = "/api/products/"

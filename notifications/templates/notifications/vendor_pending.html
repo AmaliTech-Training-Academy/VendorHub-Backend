@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <body style="margin:0; padding:0; background-color:#f8fafc; color:#172033; font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f8fafc; padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px; background-color:#ffffff; border:1px solid #e2e8f0;">
+            <tr>
+              <td style="background-color:#172554; padding:24px 32px;">
+                <div style="color:#ffffff; font-size:22px; font-weight:700;">VendorHub</div>
+                <div style="color:#fb923c; font-size:12px; font-weight:700; letter-spacing:1px; padding-top:6px; text-transform:uppercase;">Business verification</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px;">
+                <p style="margin:0 0 16px; font-size:16px; line-height:1.6;">Hello {{ vendor_name }},</p>
+                <p style="margin:0 0 16px; font-size:16px; line-height:1.6;">Welcome to VendorHub. We received your registration for <strong>{{ business_name }}</strong>.</p>
+                <p style="margin:0 0 24px; font-size:16px; line-height:1.6;">Your account is currently <strong style="color:#172554;">pending verification</strong>. We review every vendor application to help keep the marketplace trusted.</p>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-left:4px solid #f97316; background-color:#fff7ed;">
+                  <tr>
+                    <td style="padding:18px 20px;">
+                      <p style="margin:0 0 10px; color:#172554; font-size:15px; font-weight:700;">What to send</p>
+                      <p style="margin:0; color:#334155; font-size:15px; line-height:1.6;">Please email a proof of your business{% if support_email %} to <a href="mailto:{{ support_email }}" style="color:#c2410c; font-weight:700;">{{ support_email }}</a>{% endif %}, including your business name and your full name.</p>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:24px 0 0; font-size:14px; line-height:1.6; color:#64748b;">Please do not reply to this automated message. Our support team will contact you after reviewing your information.</p>
+                <p style="margin:24px 0 0; font-size:16px; line-height:1.6;">Thank you,<br><strong style="color:#172554;">The VendorHub team</strong></p>
+              </td>
+            </tr>
+            <tr>
+              <td style="border-top:1px solid #e2e8f0; padding:18px 32px; color:#64748b; font-size:12px; line-height:1.5;">This is an automated account-verification email from VendorHub.</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
