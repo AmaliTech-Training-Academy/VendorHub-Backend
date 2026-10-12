@@ -1,8 +1,12 @@
+import logging
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import DeliveryWindow, Weekday
+from .models import DeliveryWindow, VendorStorefront, Weekday
+
+logger = logging.getLogger(__name__)
 
 
 @transaction.atomic
@@ -53,3 +57,34 @@ def delivery_settings_update(*, user, delivery_fee, available_days, time_windows
     )
 
     return vendor
+
+
+@transaction.atomic
+def storefront_update(*, user, **fields):
+    vendor = getattr(user, "vendor_profile", None)
+    if vendor is None:
+        raise PermissionDenied("Only vendors can manage their storefront.")
+    if not vendor.is_active:
+        raise PermissionDenied("Inactive vendors cannot manage their storefront.")
+
+    storefront, _ = VendorStorefront.objects.select_for_update().get_or_create(vendor=vendor)
+    old_logo = storefront.logo.name
+
+    for field, value in fields.items():
+        setattr(storefront, field, value)
+
+    storefront.full_clean(exclude=None if "logo" in fields else ["logo"])
+    storefront.save()
+
+    if "logo" in fields and old_logo and old_logo != storefront.logo.name:
+        storage = storefront.logo.storage
+        transaction.on_commit(lambda: delete_old_logo(storage, old_logo))
+
+    return storefront
+
+
+def delete_old_logo(storage, name):
+    try:
+        storage.delete(name)
+    except Exception:
+        logger.exception("Could not delete old storefront logo %s; the storefront update was saved.", name)
