@@ -6,20 +6,30 @@ from products.models import Product
 from .models import DeliveryWindow, VendorStorefront, Weekday
 
 
+
+from django.db.models import Prefetch
+
 def vendor_list():
-    # An open vendor has an active shop (VendorProfile.is_active) AND an active login (AppUser.is_active).
+    # A vendor must be APPROVED and have an active user account.
     return (
-        VendorProfile.objects.filter(is_active=True, user__is_active=True)
+        VendorProfile.objects.filter(
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            user__is_active=True,
+        )
         .select_related("storefront")
         .prefetch_related(
             Prefetch(
                 "delivery_windows",
-                queryset=DeliveryWindow.objects.filter(is_active=True).order_by("sort_order", "start_time"),
+                queryset=DeliveryWindow.objects.filter(
+                    is_active=True
+                ).order_by("sort_order", "start_time"),
                 to_attr="active_delivery_windows",
             )
         )
         .order_by("id")
     )
+
+
 
 
 def vendor_get(*, vendor_id):
@@ -73,6 +83,6 @@ def _available_products():
     return Product.objects.filter(
         in_stock=True,
         deleted_at__isnull=True,
-        vendor__is_active=True,
+        vendor__verification_status=VendorProfile.VerificationStatus.APPROVED,
         vendor__user__is_active=True,
     )

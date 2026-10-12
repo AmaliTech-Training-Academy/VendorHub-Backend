@@ -38,6 +38,8 @@ class VendorStorefrontTests(APITestCase):
             business_name="Mama's Kitchen",
             owner_name="Mama",
             delivery_fee="10.00",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
+            
         )
 
         self.inactive_user = AppUser.objects.create_user(
@@ -50,7 +52,7 @@ class VendorStorefrontTests(APITestCase):
             business_name="Closed Shop",
             owner_name="Closed Owner",
             delivery_fee="5.00",
-            is_active=False,
+            verification_status=VendorProfile.VerificationStatus.PENDING,
         )
 
         self.list_url = reverse("vendors:vendor-list")
@@ -210,6 +212,7 @@ class MyDeliverySettingsTests(APITestCase):
             business_name="Mama's Kitchen",
             owner_name="Mama",
             delivery_fee="10.00",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
         )
 
         self.other_vendor_user = AppUser.objects.create_user(
@@ -222,6 +225,7 @@ class MyDeliverySettingsTests(APITestCase):
             business_name="Other Shop",
             owner_name="Other",
             delivery_fee="3.00",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
         )
 
         self.employee_user = AppUser.objects.create_user(
@@ -297,8 +301,8 @@ class MyDeliverySettingsTests(APITestCase):
         self.assertFalse(DeliveryWindow.objects.exists())
 
     def test_inactive_vendor_cannot_read_or_change_settings(self):
-        self.vendor.is_active = False
-        self.vendor.save(update_fields=["is_active"])
+        self.vendor.verification_status = VendorProfile.VerificationStatus.PENDING
+        self.vendor.save(update_fields=["verification_status"])
         self.client.force_authenticate(user=self.vendor_user)
 
         get_response = self.client.get(self.url)
@@ -531,7 +535,12 @@ class MyDeliverySettingsTests(APITestCase):
 
         for i in range(5):
             user = AppUser.objects.create_user(email=f"extra{i}@delivery.com", password="StrongPass123!", role="VENDOR")
-            extra = VendorProfile.objects.create(user=user, business_name=f"Extra {i}", owner_name="Extra")
+            extra = VendorProfile.objects.create(
+                user=user,
+                business_name=f"Extra {i}",
+                owner_name="Extra",
+                verification_status=VendorProfile.VerificationStatus.APPROVED,
+            )
             DeliveryWindow.objects.create(
                 vendor=extra,
                 window_name="Morning",
@@ -575,6 +584,7 @@ class MyDeliverySettingsTests(APITestCase):
         self.assertTrue(morning.is_active)
         self.assertFalse(DeliveryWindow.objects.get(id=afternoon_id).is_active)
         self.assertEqual(DeliveryWindow.objects.filter(vendor=self.vendor).count(), 3)
+        self.assertEqual(DeliveryWindow.objects.filter(vendor=self.vendor).count(), 3)
 
 
 def make_image(name="logo.png", size=(10, 10), noise=False):
@@ -617,6 +627,7 @@ class MyStorefrontTests(APITestCase):
             user=self.vendor_user,
             business_name="Mama's Kitchen",
             owner_name="Mama",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
         )
 
         self.other_vendor_user = AppUser.objects.create_user(
@@ -628,6 +639,7 @@ class MyStorefrontTests(APITestCase):
             user=self.other_vendor_user,
             business_name="Other Shop",
             owner_name="Other",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
         )
 
         self.employee_user = AppUser.objects.create_user(
@@ -677,8 +689,8 @@ class MyStorefrontTests(APITestCase):
         self.assertFalse(VendorStorefront.objects.exists())
 
     def test_inactive_vendor_cannot_read_or_change_storefront(self):
-        self.vendor.is_active = False
-        self.vendor.save(update_fields=["is_active"])
+        self.vendor.verification_status = VendorProfile.VerificationStatus.PENDING
+        self.vendor.save(update_fields=["verification_status"])
         self.client.force_authenticate(user=self.vendor_user)
 
         get_response = self.client.get(self.url)

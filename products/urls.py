@@ -1,4 +1,5 @@
 from django.urls import path
+
 from .apis import ProductDetailApi, ProductListCreateApi
 
 urlpatterns = [

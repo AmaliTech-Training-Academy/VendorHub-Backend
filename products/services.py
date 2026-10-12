@@ -11,8 +11,8 @@ def get_vendor_for_user(user):
     if vendor_profile is None:
         raise PermissionDenied("Only vendors can manage products.")
 
-    if not vendor_profile.is_active:
-        raise PermissionDenied("Inactive vendors cannot manage products.")
+    if vendor_profile.verification_status != vendor_profile.VerificationStatus.APPROVED:
+        raise PermissionDenied("Only approved vendors can manage products.")
 
     return vendor_profile
 
