@@ -11,13 +11,12 @@ class VendorProfileAdmin(admin.ModelAdmin):
 		"owner_name",
 		"verification_status",
 		"decline_reason",
-		"is_active",
 		"created_at",
 	)
-	list_filter = ("verification_status", "is_active")
+	list_filter = ("verification_status", )
 	list_editable = ("decline_reason",)
 	search_fields = ("business_name", "owner_name", "user__email")
-	readonly_fields = ("created_at", "updated_at", "verification_status", "is_active")
+	readonly_fields = ("created_at", "updated_at", "verification_status",)
 	actions = ("approve_vendors", "decline_vendors")
 
 	@admin.action(description="Approve selected vendors")
@@ -28,9 +27,8 @@ class VendorProfileAdmin(admin.ModelAdmin):
 				if vendor.verification_status == VendorProfile.VerificationStatus.APPROVED:
 					continue
 				vendor.verification_status = VendorProfile.VerificationStatus.APPROVED
-				vendor.is_active = True
 				vendor.decline_reason = ""
-				vendor.save(update_fields=["verification_status", "is_active", "decline_reason", "updated_at"])
+				vendor.save(update_fields=["verification_status", "decline_reason", "updated_at"])
 				updated += 1
 		self.message_user(request, f"Approved {updated} vendor(s).", messages.SUCCESS)
 
@@ -42,7 +40,6 @@ class VendorProfileAdmin(admin.ModelAdmin):
 				if vendor.verification_status == VendorProfile.VerificationStatus.DECLINED:
 					continue
 				vendor.verification_status = VendorProfile.VerificationStatus.DECLINED
-				vendor.is_active = False
-				vendor.save(update_fields=["verification_status", "is_active", "updated_at"])
+				vendor.save(update_fields=["verification_status", "updated_at"])
 				updated += 1
 		self.message_user(request, f"Declined {updated} vendor(s).", messages.SUCCESS)

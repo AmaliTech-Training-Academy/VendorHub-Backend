@@ -17,5 +17,4 @@ class IsApprovedVendor(IsVendor):
         return super().has_permission(request, view) and (
             request.user.vendor_profile.verification_status
             == request.user.vendor_profile.VerificationStatus.APPROVED
-            and request.user.vendor_profile.is_active
         )

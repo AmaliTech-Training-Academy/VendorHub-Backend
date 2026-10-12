@@ -2,6 +2,8 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from accounts.models import VendorProfile
+
 from .models import DeliveryWindow, Weekday
 
 
@@ -11,7 +13,7 @@ def delivery_settings_update(*, user, delivery_fee, available_days, time_windows
     vendor = getattr(user, "vendor_profile", None)
     if vendor is None:
         raise PermissionDenied("Only vendors can manage delivery settings.")
-    if not vendor.is_active:
+    if vendor.verification_status != VendorProfile.VerificationStatus.APPROVED:
         raise PermissionDenied("Inactive vendors cannot manage delivery settings.")
 
     # Checked here too (not only in the API), like product price, so direct callers can't save a bad fee.

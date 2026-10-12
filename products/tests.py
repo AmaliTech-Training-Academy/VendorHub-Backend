@@ -36,7 +36,6 @@ class ProductApiTests(TestCase):
             business_name="Demo Store",
             owner_name="Demo Owner",
             verification_status=VendorProfile.VerificationStatus.APPROVED,
-            is_active=True,
         )
         self.other_vendor_user = AppUser.objects.create_user(
             email="other-vendor@example.com",
@@ -48,7 +47,6 @@ class ProductApiTests(TestCase):
             business_name="Other Store",
             owner_name="Other Owner",
             verification_status=VendorProfile.VerificationStatus.APPROVED,
-            is_active=True,
         )
         self.employee_user = AppUser.objects.create_user(
             email="employee@example.com",
@@ -147,8 +145,8 @@ class ProductApiTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_inactive_vendor_cannot_manage_or_list_products(self):
-        self.vendor.is_active = False
-        self.vendor.save(update_fields=["is_active"])
+        self.vendor.save(update_fields=["verification_status"])
+        self.vendor.verification_status = VendorProfile.VerificationStatus.PENDING
         self.authenticate_as(self.vendor_user)
 
         create_response = self.client.post(

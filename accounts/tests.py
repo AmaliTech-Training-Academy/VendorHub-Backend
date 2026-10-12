@@ -21,7 +21,6 @@ class VendorRegistrationTests(TestCase):
         self.assertEqual(user.role, "VENDOR")
         vendor = VendorProfile.objects.get(user=user)
         self.assertEqual(vendor.verification_status, VendorProfile.VerificationStatus.PENDING)
-        self.assertFalse(vendor.is_active)
 
     def test_vendor_can_retrieve_verification_status(self):
         user = vendor_register(
@@ -300,7 +299,7 @@ class VendorAdminVerificationTests(TestCase):
 
         vendor.refresh_from_db()
         self.assertEqual(vendor.verification_status, VendorProfile.VerificationStatus.APPROVED)
-        self.assertTrue(vendor.is_active)
+        
 
     def test_admin_can_decline_vendor_and_preserve_reason(self):
         vendor = self.create_vendor("decline@test.com")

@@ -59,7 +59,9 @@ class VendorProfile(models.Model):
         PENDING = 'PENDING', 'Pending'
         APPROVED = 'APPROVED', 'Approved'
         DECLINED = 'DECLINED', 'Declined'
-
+    @property
+    def is_approved(self):
+        return self.verification_status == self.VerificationStatus.APPROVED
     user = models.OneToOneField(AppUser, on_delete=models.CASCADE, related_name='vendor_profile')
     business_name = models.CharField(max_length=255)
     owner_name = models.CharField(max_length=255)
@@ -70,7 +72,6 @@ class VendorProfile(models.Model):
         default=VerificationStatus.PENDING,
     )
     decline_reason = models.CharField(max_length=255, blank=True, default='')
-    is_active = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

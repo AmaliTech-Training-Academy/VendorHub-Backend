@@ -27,7 +27,7 @@ class OrderCreateApiTests(APITestCase):
             owner_name="Vendor Owner",
             delivery_fee=Decimal("5.00"),
             verification_status=VendorProfile.VerificationStatus.APPROVED,
-            is_active=True,
+            
         )
 
         self.other_vendor_user = AppUser.objects.create_user(
@@ -41,7 +41,6 @@ class OrderCreateApiTests(APITestCase):
             owner_name="Other Owner",
             delivery_fee=Decimal("10.00"),
             verification_status=VendorProfile.VerificationStatus.APPROVED,
-            is_active=True,
         )
 
         self.employee_user = AppUser.objects.create_user(
@@ -188,8 +187,8 @@ class OrderCreateApiTests(APITestCase):
         )
 
     def test_inactive_vendor_cannot_receive_order(self):
-        self.vendor.is_active = False
-        self.vendor.save(update_fields=["is_active"])
+        self.vendor.verification_status = VendorProfile.VerificationStatus.PENDING
+        self.vendor.save(update_fields=["verification_status"])
 
         response = self.client.post(
             self.url,
@@ -715,7 +714,6 @@ class OrderStatusUpdateTests(APITestCase):
             owner_name="Owner A",
             delivery_fee=Decimal("5.00"),
             verification_status=VendorProfile.VerificationStatus.APPROVED,
-            is_active=True,
         )
 
         # Vendor B - tries to update Vendor A's order
@@ -731,7 +729,6 @@ class OrderStatusUpdateTests(APITestCase):
             owner_name="Owner B",
             delivery_fee=Decimal("5.00"),
             verification_status=VendorProfile.VerificationStatus.APPROVED,
-            is_active=True,
         )
 
         # Employee - the order's customer

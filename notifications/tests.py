@@ -66,8 +66,7 @@ class VendorEmailTests(TestCase):
 
         with self.captureOnCommitCallbacks(execute=True):
             vendor.verification_status = VendorProfile.VerificationStatus.APPROVED
-            vendor.is_active = True
-            vendor.save(update_fields=["verification_status", "is_active", "updated_at"])
+            vendor.save(update_fields=["verification_status", "updated_at"])
 
         send_approved.assert_called_once_with(vendor)
 
@@ -77,8 +76,7 @@ class VendorEmailTests(TestCase):
 
         with self.captureOnCommitCallbacks(execute=True):
             vendor.verification_status = VendorProfile.VerificationStatus.DECLINED
-            vendor.is_active = False
-            vendor.save(update_fields=["verification_status", "is_active", "updated_at"])
+            vendor.save(update_fields=["verification_status", "updated_at"])
 
         send_declined.assert_called_once_with(vendor)
 
