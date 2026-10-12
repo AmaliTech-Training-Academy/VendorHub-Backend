@@ -627,6 +627,7 @@ class MyStorefrontTests(APITestCase):
             user=self.vendor_user,
             business_name="Mama's Kitchen",
             owner_name="Mama",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
         )
 
         self.other_vendor_user = AppUser.objects.create_user(
@@ -638,6 +639,7 @@ class MyStorefrontTests(APITestCase):
             user=self.other_vendor_user,
             business_name="Other Shop",
             owner_name="Other",
+            verification_status=VendorProfile.VerificationStatus.APPROVED,
         )
 
         self.employee_user = AppUser.objects.create_user(
@@ -687,8 +689,8 @@ class MyStorefrontTests(APITestCase):
         self.assertFalse(VendorStorefront.objects.exists())
 
     def test_inactive_vendor_cannot_read_or_change_storefront(self):
-        self.vendor.is_active = False
-        self.vendor.save(update_fields=["is_active"])
+        self.vendor.verification_status = VendorProfile.VerificationStatus.PENDING
+        self.vendor.save(update_fields=["verification_status"])
         self.client.force_authenticate(user=self.vendor_user)
 
         get_response = self.client.get(self.url)

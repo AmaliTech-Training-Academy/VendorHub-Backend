@@ -68,7 +68,7 @@ def storefront_update(*, user, **fields):
     if vendor is None:
         raise PermissionDenied("Only vendors can manage their storefront.")
     if vendor.verification_status != VendorProfile.VerificationStatus.APPROVED:
-        raise PermissionDenied("unapproved vendors cannot manage delivery settings.")
+        raise PermissionDenied("unapproved vendors cannot manage their storefront.")
 
     storefront, _ = VendorStorefront.objects.select_for_update().get_or_create(vendor=vendor)
     old_logo = storefront.logo.name
