@@ -6,9 +6,6 @@ from products.models import Product
 from .models import DeliveryWindow, VendorStorefront, Weekday
 
 
-
-from django.db.models import Prefetch
-
 def vendor_list():
     # A vendor must be APPROVED and have an active user account.
     return (

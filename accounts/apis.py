@@ -202,7 +202,7 @@ class LoginApi(APIView):
         email = serializers.EmailField()
         role = serializers.CharField(max_length=20)
         name = serializers.CharField(
-            help_text="Owner name for vendors, full name for employees.",
+            help_text="Business name for vendors, full name for employees.",
         )
 
         class Meta:
@@ -245,7 +245,7 @@ class LoginApi(APIView):
             return Response({"detail": e.messages}, status=status.HTTP_400_BAD_REQUEST)
 
         if user.role == "VENDOR":
-            name = user.vendor_profile.owner_name
+            name = user.vendor_profile.business_name
         else:
             name = user.employee_profile.full_name
 

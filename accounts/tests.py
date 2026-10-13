@@ -330,7 +330,7 @@ class ResponseNameFieldsTests(APITestCase):
         self.assertEqual(response.data["business_name"], "TechCorp GH")
         self.assertEqual(response.data["owner_name"], "Kwame Mensah")
 
-    def test_login_returns_owner_name_for_vendor(self):
+    def test_login_returns_business_name_for_vendor(self):
         vendor_register(
             email="v_login@test.com",
             password="StrongPass123!",
@@ -343,7 +343,7 @@ class ResponseNameFieldsTests(APITestCase):
             "password": "StrongPass123!",
         })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["name"], "Vendor Owner")
+        self.assertEqual(response.data["name"], "Vendor Biz")
 
     def test_login_returns_full_name_for_employee(self):
         employee_register(

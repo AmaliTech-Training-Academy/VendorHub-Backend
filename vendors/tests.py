@@ -155,6 +155,31 @@ class VendorStorefrontTests(APITestCase):
         self.assertEqual(response.data["count"], 1)
         self.assertEqual(response.data["results"][0]["name"], "Jollof")
 
+    @override_settings(
+        STORAGES={
+            **settings.STORAGES,
+            "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        },
+    )
+    def test_products_include_image_url(self):
+        Product.objects.create(
+            vendor=self.active_vendor,
+            name="Jollof",
+            price="20.00",
+            image=f"products/{self.active_vendor.id}/jollof.png",
+        )
+        Product.objects.create(vendor=self.active_vendor, name="Waakye", price="15.00")
+        self.client.force_authenticate(user=self.active_user)
+
+        results = self.get_products(self.active_vendor.id).data["results"]
+        images = {product["name"]: product["image"] for product in results}
+
+        self.assertEqual(
+            images["Jollof"],
+            f"http://testserver/media/products/{self.active_vendor.id}/jollof.png",
+        )
+        self.assertIsNone(images["Waakye"])
+
     def test_products_of_inactive_vendor_not_found(self):
         Product.objects.create(vendor=self.inactive_vendor, name="Hidden", price="20.00")
         self.client.force_authenticate(user=self.active_user)
@@ -587,14 +612,14 @@ class MyDeliverySettingsTests(APITestCase):
         self.assertEqual(DeliveryWindow.objects.filter(vendor=self.vendor).count(), 3)
 
 
-def make_image(name="logo.png", size=(10, 10), noise=False):
+def make_image(name="logo.png", size=(10, 10), noise=False, image_format="PNG"):
     if noise:
         image = Image.frombytes("RGB", size, os.urandom(size[0] * size[1] * 3))
     else:
         image = Image.new("RGB", size, "red")
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/png")
+    image.save(buffer, format=image_format)
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type=f"image/{image_format.lower()}")
 
 
 class MyStorefrontTests(APITestCase):
@@ -842,6 +867,28 @@ class MyStorefrontTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(VendorStorefront.objects.exists())
 
+    def test_accepts_supported_logo_formats(self):
+        for image_format, extension in [("PNG", "png"), ("JPEG", "jpg"), ("GIF", "gif"), ("WEBP", "webp")]:
+            with self.subTest(image_format=image_format):
+                response = self.upload_logo(make_image(f"logo.{extension}", image_format=image_format))
+
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_rejects_unsupported_logo_formats(self):
+        cases = [
+            ("BMP", "logo.bmp"),
+            ("TIFF", "logo.tiff"),
+            # The extension lies: the decoded format is what counts.
+            ("TIFF", "logo.png"),
+        ]
+        for image_format, name in cases:
+            with self.subTest(image_format=image_format, name=name):
+                response = self.upload_logo(make_image(name, image_format=image_format))
+
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(response.data, {"detail": "Logo must be PNG, JPG, GIF or WebP."})
+                self.assertFalse(VendorStorefront.objects.exclude(logo="").exists())
+
     def test_rejects_logo_over_size_limit(self):
         response = self.upload_logo(make_image(size=(1000, 1000), noise=True))
 
@@ -885,4 +932,3 @@ class MyStorefrontTests(APITestCase):
             self.client.get(self.list_url)
 
         self.assertEqual(len(seven_vendors), len(two_vendors))
-

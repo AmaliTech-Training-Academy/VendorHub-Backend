@@ -126,6 +126,7 @@ class VendorProductListApi(GenericAPIView):
                 "description",
                 "category",
                 "price",
+                "image",
                 "in_stock",
             ]
             read_only_fields = fields
@@ -148,7 +149,7 @@ class VendorProductListApi(GenericAPIView):
             )
 
         page = self.paginate_queryset(vendor_product_list(vendor_id=vendor.id))
-        serializer = self.OutputSerializer(page, many=True)
+        serializer = self.OutputSerializer(page, many=True, context={"request": request})
         return self.get_paginated_response(serializer.data)
 
 

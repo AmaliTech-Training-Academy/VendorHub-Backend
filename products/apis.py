@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Product
+from .models import MAX_IMAGE_SIZE_MB, Product
 from .pagination import ProductPagination
 from .permissions import IsApprovedVendor
 from .selectors import products_get
@@ -62,8 +62,21 @@ class ProductListCreateApi(GenericAPIView):
                 "price",
                 "description",
                 "category",
+                "image",
                 "in_stock",
             ]
+            extra_kwargs = {
+                "image": {
+                    "allow_null": True,
+                    "help_text": (
+                        f"Image file (PNG, JPG, GIF or WebP), max {MAX_IMAGE_SIZE_MB} MB. "
+                        "Send null to remove the image."
+                    ),
+                },
+                # Without an explicit default, multipart treats a missing boolean as an unchecked
+                # checkbox (False), so products created with an image would be hidden from employees.
+                "in_stock": {"default": True},
+            }
 
         def validate_price(self, value):
             if value <= 0:
@@ -84,6 +97,7 @@ class ProductListCreateApi(GenericAPIView):
                 "price",
                 "description",
                 "category",
+                "image",
                 "in_stock",
                 "created_at",
                 "updated_at",
@@ -106,19 +120,20 @@ class ProductListCreateApi(GenericAPIView):
     def get(self, request):
         vendor = get_vendor_for_user(request.user)
         page = self.paginate_queryset(products_get(vendor_id=vendor.id))
-        serializer = self.OutputSerializer(page, many=True)
+        serializer = self.OutputSerializer(page, many=True, context={"request": request})
         return self.get_paginated_response(serializer.data)
 
     @extend_schema(
         summary="Create a Product",
         description=(
             "Adds a new product to the logged-in vendor's catalog. "
-            "Requires a valid access token and an approved vendor account.\n\n"
+            "Requires a valid access token and an approved vendor account. "
+            "Send as multipart/form-data when uploading an image; JSON works without one.\n\n"
             "- **price**: must be greater than 0.\n"
             "- **in_stock**: whether the product can currently be ordered."
         ),
         tags=["Products"],
-        request=InputSerializer,
+        request={"multipart/form-data": InputSerializer, "application/json": InputSerializer},
         responses={
             201: OutputSerializer,
             400: VALIDATION_ERROR_RESPONSE,
@@ -153,7 +168,7 @@ class ProductListCreateApi(GenericAPIView):
         )
 
         return Response(
-            self.OutputSerializer(product).data,
+            self.OutputSerializer(product, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -180,7 +195,8 @@ class ProductDetailApi(APIView):
         description=(
             "Partially updates one of the logged-in vendor's own products. "
             "Only the fields you send are changed. Returns 404 if the product "
-            "does not exist or belongs to another vendor.\n\n"
+            "does not exist or belongs to another vendor. "
+            "Send as multipart/form-data when uploading an image; JSON works without one.\n\n"
             "- **price**: if sent, must be greater than 0."
         ),
         tags=["Products"],
@@ -192,7 +208,7 @@ class ProductDetailApi(APIView):
                 description="ID of the product to update.",
             ),
         ],
-        request=InputSerializer,
+        request={"multipart/form-data": InputSerializer, "application/json": InputSerializer},
         responses={
             200: OutputSerializer,
             400: VALIDATION_ERROR_RESPONSE,
@@ -233,7 +249,7 @@ class ProductDetailApi(APIView):
             **serializer.validated_data,
         )
 
-        return Response(self.OutputSerializer(product).data)
+        return Response(self.OutputSerializer(product, context={"request": request}).data)
 
     @extend_schema(
         summary="Delete a Product",
