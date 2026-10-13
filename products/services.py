@@ -46,6 +46,8 @@ def product_update(*, product, user, **data):
     if product.vendor_id != vendor.id:
         raise PermissionDenied("You can only modify your own products.")
 
+    # Reload and lock the row: the caller's copy may be stale, and saving it would restore an old image.
+    product = Product.objects.select_for_update().get(pk=product.pk)
     old_image = product.image.name
 
     for field, value in data.items():

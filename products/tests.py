@@ -16,16 +16,17 @@ from accounts.models import AppUser, VendorProfile
 
 from .apis import ProductListCreateApi
 from .models import Product
+from .services import product_update
 
 
-def make_image(name="product.png", size=(10, 10), noise=False):
+def make_image(name="product.png", size=(10, 10), noise=False, image_format="PNG"):
     if noise:
         image = Image.frombytes("RGB", size, os.urandom(size[0] * size[1] * 3))
     else:
         image = Image.new("RGB", size, "red")
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    return SimpleUploadedFile(name, buffer.getvalue(), content_type="image/png")
+    image.save(buffer, format=image_format)
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type=f"image/{image_format.lower()}")
 
 
 class ProductInputSerializerTests(TestCase):
@@ -345,6 +346,76 @@ class ProductImageTests(TestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertFalse(Product.objects.exists())
+
+    def test_accepts_supported_image_formats(self):
+        for image_format, extension in [("PNG", "png"), ("JPEG", "jpg"), ("GIF", "gif"), ("WEBP", "webp")]:
+            with self.subTest(image_format=image_format):
+                response = self.create_product(image=make_image(f"product.{extension}", image_format=image_format))
+
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_rejects_unsupported_image_formats(self):
+        cases = [
+            ("BMP", "product.bmp"),
+            ("TIFF", "product.tiff"),
+            # The extension lies: the decoded format is what counts.
+            ("TIFF", "product.png"),
+        ]
+        for image_format, name in cases:
+            with self.subTest(image_format=image_format, name=name):
+                response = self.create_product(image=make_image(name, image_format=image_format))
+
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(str(response.data["image"][0]), "Image must be PNG, JPG, GIF or WebP.")
+                self.assertFalse(Product.objects.exists())
+
+    def test_in_stock_defaults_to_true_and_respects_explicit_values(self):
+        cases = [
+            ("json", {}, True),
+            ("json", {"in_stock": True}, True),
+            ("json", {"in_stock": False}, False),
+            ("multipart", {}, True),
+            ("multipart", {"in_stock": "true"}, True),
+            ("multipart", {"in_stock": "false"}, False),
+        ]
+        for request_format, extra, expected in cases:
+            with self.subTest(request_format=request_format, extra=extra):
+                data = {"name": "Coffee", "price": "12.50", **extra}
+                if request_format == "multipart":
+                    data["image"] = make_image()
+
+                response = self.client.post(self.collection_url, data, format=request_format)
+
+                self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+                self.assertIs(response.data["in_stock"], expected)
+                self.assertIs(Product.objects.get(id=response.data["id"]).in_stock, expected)
+
+    def test_multipart_patch_without_in_stock_keeps_it(self):
+        product = self.product_with_image()
+        Product.objects.filter(id=product.id).update(in_stock=False)
+
+        response = self.client.patch(self.detail_url(product), {"image": make_image("new.png")}, format="multipart")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIs(response.data["in_stock"], False)
+
+    def test_update_with_stale_product_does_not_restore_replaced_image(self):
+        product = self.product_with_image()
+        stale = Product.objects.get(id=product.id)
+
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.patch(self.detail_url(product), {"image": make_image("new.png")}, format="multipart")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        new_image = Product.objects.get(id=product.id).image.name
+
+        # A second request that loaded the product before the image change only edits the price.
+        with self.captureOnCommitCallbacks(execute=True):
+            product_update(product=stale, user=self.vendor_user, price="15.00")
+
+        product.refresh_from_db()
+        self.assertEqual(str(product.price), "15.00")
+        self.assertEqual(product.image.name, new_image)
+        self.assertTrue(os.path.exists(product.image.path))
 
     def test_rejects_image_over_size_limit(self):
         response = self.create_product(image=make_image(size=(1000, 1000), noise=True))

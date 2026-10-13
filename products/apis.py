@@ -73,6 +73,9 @@ class ProductListCreateApi(GenericAPIView):
                         "Send null to remove the image."
                     ),
                 },
+                # Without an explicit default, multipart treats a missing boolean as an unchecked
+                # checkbox (False), so products created with an image would be hidden from employees.
+                "in_stock": {"default": True},
             }
 
         def validate_price(self, value):

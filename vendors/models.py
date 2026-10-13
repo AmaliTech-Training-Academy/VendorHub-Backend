@@ -1,10 +1,14 @@
 from pathlib import Path
 from uuid import uuid4
+
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db import models
+from PIL import Image
 
 MAX_LOGO_SIZE_MB = 2
+# Formats browsers display reliably. Checked on the decoded file, not the filename extension.
+ALLOWED_LOGO_FORMATS = {"PNG", "JPEG", "GIF", "WEBP"}
 
 
 class Weekday(models.TextChoices):
@@ -58,6 +62,20 @@ def validate_logo_size(logo):
         raise ValidationError(f"Logo must be {MAX_LOGO_SIZE_MB} MB or smaller.")
 
 
+def validate_logo_format(logo):
+    logo.seek(0)
+    try:
+        with Image.open(logo) as decoded:
+            logo_format = decoded.format
+    except Exception as e:
+        raise ValidationError("Upload a valid image.") from e
+    finally:
+        logo.seek(0)
+
+    if logo_format not in ALLOWED_LOGO_FORMATS:
+        raise ValidationError("Logo must be PNG, JPG, GIF or WebP.")
+
+
 class VendorStorefront(models.Model):
 
     vendor = models.OneToOneField(
@@ -65,7 +83,7 @@ class VendorStorefront(models.Model):
         related_name="storefront",
         on_delete=models.CASCADE,
     )
-    logo = models.ImageField(upload_to=storefront_logo_path, blank=True, validators=[validate_logo_size])
+    logo = models.ImageField(upload_to=storefront_logo_path, blank=True, validators=[validate_logo_size, validate_logo_format])
     slogan = models.CharField(max_length=150, blank=True)
     phone_number = models.CharField(
         max_length=16,
