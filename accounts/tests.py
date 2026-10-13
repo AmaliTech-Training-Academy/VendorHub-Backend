@@ -206,30 +206,6 @@ class LoginEdgeCaseTests(APITestCase):
         self.assertEqual(response.data["role"], "EMPLOYEE")
         self.assertIn("id", response.data)
 
-    def test_login_returns_business_name_for_vendor(self):
-        vendor_user = AppUser.objects.create_user(
-            email="vendor_name@test.com",
-            password="StrongPass123!",
-            role="VENDOR",
-        )
-        VendorProfile.objects.create(user=vendor_user, business_name="Mama's Kitchen", owner_name="Ama Mensah")
-
-        response = self.client.post(self.url, {
-            "email": "vendor_name@test.com",
-            "password": "StrongPass123!",
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["name"], "Mama's Kitchen")
-
-    def test_login_returns_full_name_for_employee(self):
-        response = self.client.post(self.url, {
-            "email": "login_edge@test.com",
-            "password": "StrongPass123!",
-        })
-
-        self.assertEqual(response.data["name"], "Test Employee")
-
     def test_login_rejects_invalid_email_format(self):
         response = self.client.post(self.url, {
             "email": "not-an-email",
@@ -354,7 +330,7 @@ class ResponseNameFieldsTests(APITestCase):
         self.assertEqual(response.data["business_name"], "TechCorp GH")
         self.assertEqual(response.data["owner_name"], "Kwame Mensah")
 
-    def test_login_returns_owner_name_for_vendor(self):
+    def test_login_returns_business_name_for_vendor(self):
         vendor_register(
             email="v_login@test.com",
             password="StrongPass123!",
@@ -367,7 +343,7 @@ class ResponseNameFieldsTests(APITestCase):
             "password": "StrongPass123!",
         })
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data["name"], "Vendor Owner")
+        self.assertEqual(response.data["name"], "Vendor Biz")
 
     def test_login_returns_full_name_for_employee(self):
         employee_register(
